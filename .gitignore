@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Engine runtime data
+code/engine/.data/
+code/engine/.smoke*/
+
+# Desktop
+code/desktop/node_modules/
+code/desktop/dist/
+code/desktop/dist-electron/
+code/desktop/release/
+code/desktop/.smoke*
+
+# Paper build artifacts
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.log
+paper/*.out
+paper/*.pdf
+paper/*.run.xml
+paper/*.synctex.gz
+paper/zh/*.aux
+paper/zh/*.bbl
+paper/zh/*.blg
+paper/zh/*.log
+paper/zh/*.out
+paper/zh/*.pdf
+paper/zh/*.run.xml
+paper/zh/*.synctex.gz
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Academic manuscript and non-code materials
+/paper/
+/面向教育领域的教材锚定多智能体解读平台.md
+/code/results.json

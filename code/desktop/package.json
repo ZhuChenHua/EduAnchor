@@ -1,0 +1,67 @@
+{
+  "name": "eduanchor-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EduAnchor offline textbook-grounded multi-agent desktop app",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "build": "vite build && tsc -p tsconfig.electron.json",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc -p tsconfig.electron.json --noEmit",
+    "dist": "npm run build && electron-builder",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vue-tsc": "^2.2.0",
+    "wait-on": "^8.0.1",
+    "@types/node": "^22.10.2"
+  },
+  "build": {
+    "appId": "com.eduanchor.desktop",
+    "productName": "EduAnchor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../engine/dist/eduanchor-engine",
+        "to": "engine",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "artifactName": "EduAnchor-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "EduAnchor-Portable-${version}-${arch}.${ext}"
+    }
+  },
+  "author": "Chenhua Zhu"
+}
