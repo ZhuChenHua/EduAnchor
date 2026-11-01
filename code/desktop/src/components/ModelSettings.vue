@@ -13,9 +13,9 @@ const emit = defineEmits<{
 }>()
 
 const providers = ref<Record<string, ProviderInfo>>({})
-const provider = ref('ollama')
-const baseUrl = ref('http://127.0.0.1:11434/v1')
-const model = ref('qwen3:8b')
+const provider = ref('llamacpp')
+const baseUrl = ref('http://127.0.0.1:8081/v1')
+const model = ref('qwen3-8b')
 const apiKey = ref('')
 const temperature = ref(0.2)
 const maxTokens = ref(900)
@@ -125,8 +125,8 @@ onMounted(async () => {
       </div>
 
       <p class="muted settings-intro">
-        本地默认使用 Ollama 的 <code>qwen3:8b</code> 量化版本；也可以填入任意 OpenAI
-        兼容厂商的 Base URL 与 API Key。所有配置仅保存在本机数据目录。
+        默认使用项目内置的 Qwen3-8B Q4_K_M 与 llama.cpp，不依赖 Ollama；也可以切换到
+        Ollama、vLLM 或任意 OpenAI 兼容厂商。所有配置仅保存在本机数据目录。
       </p>
 
       <div v-if="loading" class="loading">正在读取模型配置…</div>
@@ -148,7 +148,7 @@ onMounted(async () => {
 
         <label class="field">
           <span>模型名</span>
-          <input v-model="model" class="input" placeholder="qwen3:8b / deepseek-chat / qwen-plus" />
+          <input v-model="model" class="input" placeholder="qwen3-8b / deepseek-chat / qwen-plus" />
         </label>
 
         <label class="field">

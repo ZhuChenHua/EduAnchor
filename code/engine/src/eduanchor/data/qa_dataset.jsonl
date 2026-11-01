@@ -22,13 +22,27 @@
 {"question": "教材锚定的含义是什么？", "scope": "in", "gold_answer": "要求回答能够追溯到教材原文，并在教材未覆盖时明确拒答。", "gold_quote": "它要求回答必须能够追溯到教材原文"}
 {"question": "如何降低教育问答中的幻觉？", "scope": "in", "gold_answer": "通过原文引用、支撑检查和超纲拒答提升教育问答的可信度。", "gold_quote": "通过原文引用、支撑检查和超纲拒答"}
 {"question": "训练神经网络的实验配置为什么需要完整记录？", "scope": "in", "gold_answer": "为了保证实验结果可复现。", "gold_quote": "以保证结果可复现"}
-{"question": "量子引力理论如何统一广义相对论与量子力学？", "scope": "out"}
-{"question": "如何治疗糖尿病？", "scope": "out"}
-{"question": "2026年世界杯冠军是谁？", "scope": "out"}
-{"question": "请解释莎士比亚《哈姆雷特》的主题。", "scope": "out"}
-{"question": "如何用Rust实现一个操作系统内核？", "scope": "out"}
-{"question": "法国大革命的主要原因是什么？", "scope": "out"}
-{"question": "股票明天会涨吗？", "scope": "out"}
-{"question": "如何用扩散模型生成一段高清视频？", "scope": "out"}
-{"question": "请推荐适合初学者的钢琴练习曲目。", "scope": "out"}
-{"question": "地球到火星的距离大约是多少公里？", "scope": "out"}
+{"question": "量子引力理论如何统一广义相对论与量子力学？", "scope": "out", "annotations": [{"type": "clear"}]}
+{"question": "如何治疗糖尿病？", "scope": "out", "annotations": [{"type": "clear"}]}
+{"question": "2026年世界杯冠军是谁？", "scope": "out", "annotations": [{"type": "clear"}]}
+{"question": "请解释莎士比亚《哈姆雷特》的主题。", "scope": "out", "annotations": [{"type": "clear"}]}
+{"question": "如何用Rust实现一个操作系统内核？", "scope": "out", "annotations": [{"type": "clear"}]}
+{"question": "法国大革命的主要原因是什么？", "scope": "out", "annotations": [{"type": "clear"}]}
+{"question": "股票明天会涨吗？", "scope": "out", "annotations": [{"type": "clear"}]}
+{"question": "如何用扩散模型生成一段高清视频？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "请推荐适合初学者的钢琴练习曲目。", "scope": "out", "annotations": [{"type": "clear"}]}
+{"question": "地球到火星的距离大约是多少公里？", "scope": "out", "annotations": [{"type": "clear"}]}
+{"question": "BERT 和 GPT 在预训练目标上有什么区别？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "如何用 LoRA 对预训练语言模型进行参数高效微调？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "Batch Normalization 与 Layer Normalization 的区别是什么？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "Adam 优化器中的一阶矩和二阶矩如何更新？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "知识蒸馏中教师模型和学生模型如何对齐？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "扩散模型的前向加噪和反向去噪过程是什么？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "图神经网络如何通过消息传递更新节点表示？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "多模态模型如何对齐图像和文本表示？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "联邦学习如何在不上传原始数据的情况下聚合梯度？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "因果推断中的反事实推理如何定义？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "BLEU 分数如何计算机器翻译质量？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "HNSW 向量索引的构建和查询过程是什么？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "CRF 与 HMM 在序列标注中的区别是什么？", "scope": "out", "annotations": [{"type": "borderline"}]}
+{"question": "Chain-of-thought prompting 为什么能提升推理能力？", "scope": "out", "annotations": [{"type": "borderline"}]}

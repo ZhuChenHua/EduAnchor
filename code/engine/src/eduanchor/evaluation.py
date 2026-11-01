@@ -35,22 +35,36 @@ def _latex_escape(text: str) -> str:
     return "".join(replacements.get(char, char) for char in text)
 
 
+CONDITION_LABELS = {
+    "C1": "C1 bare Qwen3-8B",
+    "C2": "C2 dense RAG",
+    "C3": "C3 hybrid + refusal prompt",
+    "C4": "C4 coverage + verifier",
+    "C5": "C5 full EduAnchor",
+}
+
+
 def _condition_table(rows: list[dict], caption: str, label: str) -> str:
     lines = [
         r"\begin{table}[t]",
         r"\centering",
+        r"\footnotesize",
+        r"\setlength{\tabcolsep}{1.8pt}",
         rf"\caption{{{caption}}}",
         rf"\label{{{label}}}",
-        r"\begin{tabular}{lccccc}",
+        r"\begin{tabular}{@{}lccccc@{}}",
         r"\toprule",
-        r"Condition & Support$\uparrow$ & Hallucination$\downarrow$ & False refusal$\downarrow$ & Out-of-scope refusal$\uparrow$ & Latency (ms)$\downarrow$ \\",
+        r"Condition & Support$\uparrow$ & Halluc.$\downarrow$ & False ref.$\downarrow$ & Out clear$\uparrow$ & Out border$\uparrow$ \\",
         r"\midrule",
     ]
     for row in rows:
+        label_text = CONDITION_LABELS.get(row["condition"], row["condition"])
         lines.append(
-            f"{row['condition']} & {row['support_rate']:.3f} & {row['hallucination_rate']:.3f} & "
-            f"{row['false_refusal_rate']:.3f} & {row['refusal_accuracy']:.3f} & "
-            f"{row['mean_latency_ms']:.0f} \\\\"
+            f"{label_text} & {100 * row['support_rate']:.1f} & "
+            f"{100 * row['hallucination_rate']:.1f} & "
+            f"{100 * row['false_refusal_rate']:.1f} & "
+            f"{100 * row['clear_refusal_accuracy']:.1f} & "
+            f"{100 * row['borderline_refusal_accuracy']:.1f} \\\\"
         )
     lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
     return "\n".join(lines)
@@ -73,6 +87,10 @@ class EvaluationRunner:
         in_total = 0
         out_refused = 0
         out_total = 0
+        out_clear = 0
+        out_clear_refused = 0
+        out_borderline = 0
+        out_borderline_refused = 0
         latencies: list[float] = []
         relevance: list[float] = []
 
@@ -93,6 +111,13 @@ class EvaluationRunner:
             else:
                 out_total += 1
                 out_refused += int(answer.refused)
+                labels = {item.get("type") for item in record.annotations}
+                if "borderline" in labels:
+                    out_borderline += 1
+                    out_borderline_refused += int(answer.refused)
+                else:
+                    out_clear += 1
+                    out_clear_refused += int(answer.refused)
             rows.append(
                 {
                     "question": record.question,
@@ -115,6 +140,8 @@ class EvaluationRunner:
             hallucination_rate=1.0 - support_mean,
             false_refusal_rate=in_refused / max(in_total, 1),
             refusal_accuracy=out_refused / max(out_total, 1),
+            clear_refusal_accuracy=out_clear_refused / max(out_clear, 1),
+            borderline_refusal_accuracy=out_borderline_refused / max(out_borderline, 1),
             answer_rate_out=1.0 - out_refused / max(out_total, 1),
             relevance=float(np.mean(relevance)) if relevance else 0.0,
             mean_latency_ms=float(np.mean(latencies)) if latencies else 0.0,
@@ -148,8 +175,7 @@ def export_latex(results: dict[str, dict], directory: str | Path) -> list[str]:
         rows.append({"condition": condition.upper(), **metrics})
     table = _condition_table(
         rows,
-        "Ablation on the held-out textbook QA set (C1: bare Qwen; C2: dense RAG; "
-        "C3: hybrid+rerank; C4: multi-agent; C5: full system with anchor constraints).",
+        "Controlled comparison on the 48-question set (24 in-scope, 24 out-of-scope: 9 clear and 15 borderline). Values are percentages. All conditions use the same Qwen3-8B model and decoding parameters. C2/C3 receive the refusal instruction in the prompt but have no explicit coverage gate; C4 adds the coverage gate and claim-level verifier; C5 adds strict anchor enforcement and regeneration.",
         "tab:main-results",
     )
     main_path = directory / "main_results.tex"

@@ -15,12 +15,15 @@ Embedding backend defaults to `auto`: it tries BGE-M3 from `FlagEmbedding`
 (install with `uv sync --extra models`) and falls back to a deterministic
 hash embedder so the system always runs offline without model downloads.
 
-Local LLM is the default: Qwen3-8B through Ollama (`qwen3:8b`, GGUF) or
-vLLM (`Qwen/Qwen3-8B-AWQ`, AWQ). Ollama is the default endpoint. Any
+The default is the built-in Qwen3-8B Q4_K_M file served by llama.cpp at
+`http://127.0.0.1:8081/v1`. Start it from the repository root with
+`pwsh ../scripts/start-model.ps1`; the Electron app does this automatically.
+Ollama (`qwen3:8b`) and vLLM (`Qwen/Qwen3-8B-AWQ`) are optional. Any
 OpenAI-compatible endpoint can be selected at runtime:
 
 ```bash
 uv run eduanchor model show
+uv run eduanchor model set --provider llamacpp --base-url http://127.0.0.1:8081/v1 --name qwen3-8b
 uv run eduanchor model set --provider ollama --base-url http://127.0.0.1:11434/v1 --name qwen3:8b
 uv run eduanchor model set --provider vllm --base-url http://127.0.0.1:8000/v1 --name Qwen/Qwen3-8B-AWQ
 uv run eduanchor model set --provider deepseek --api-key "$DEEPSEEK_API_KEY"

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { spawn, type ChildProcess, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import readline from 'node:readline'
 
@@ -146,6 +146,102 @@ class EngineClient {
 
 const engine = new EngineClient()
 let win: BrowserWindow | null = null
+let modelServer: ChildProcess | null = null
+let modelStart: Promise<void> | null = null
+
+function repoRoot(): string {
+  return app.isPackaged ? process.resourcesPath : path.resolve(app.getAppPath(), '..', '..')
+}
+
+function bundledModelFile(): string {
+  const dir = app.isPackaged
+    ? path.join(process.resourcesPath, 'models', 'Qwen3-8B-GGUF')
+    : path.join(repoRoot(), 'models', 'Qwen3-8B-GGUF')
+  return path.join(dir, 'Qwen3-8B-Q4_K_M.gguf')
+}
+
+function llamaServerFile(): string {
+  const dir = app.isPackaged
+    ? path.join(process.resourcesPath, 'llama')
+    : path.join(repoRoot(), 'runtime', 'llama')
+  return path.join(dir, 'llama-server.exe')
+}
+
+function configuredProvider(): string {
+  if (process.env.EDUANCHOR_LLM_PROVIDER) return process.env.EDUANCHOR_LLM_PROVIDER
+  const dataDir = process.env.EDUANCHOR_DATA_DIR || path.join(process.env.LOCALAPPDATA || '', 'EduAnchor')
+  try {
+    const payload = JSON.parse(readFileSync(path.join(dataDir, 'model.json'), 'utf-8')) as {
+      provider?: string
+    }
+    return payload.provider || 'llamacpp'
+  } catch {
+    return 'llamacpp'
+  }
+}
+
+async function modelHealthy(port: number): Promise<boolean> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/health`, {
+      signal: AbortSignal.timeout(1500)
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+async function startBundledModel(): Promise<void> {
+  if (process.env.EDUANCHOR_DISABLE_BUNDLED === '1') return
+  if (configuredProvider() !== 'llamacpp') return
+  const model = bundledModelFile()
+  const server = llamaServerFile()
+  if (!existsSync(model) || !existsSync(server)) {
+    console.warn('[model] bundled Qwen3-8B or llama-server not found; using fallback')
+    return
+  }
+  if (await modelHealthy(8081)) return
+  modelServer = spawn(
+    server,
+    [
+      '-m', model,
+      '--alias', 'qwen3-8b',
+      '--host', '127.0.0.1',
+      '--port', '8081',
+      '-c', '8192',
+      '-ngl', '99',
+      '--jinja',
+      '--reasoning', 'off',
+      '--no-webui'
+    ],
+    { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] }
+  )
+  modelServer.stderr?.on('data', (chunk: Buffer) => console.error('[model]', chunk.toString('utf-8')))
+  modelServer.on('exit', () => {
+    modelServer = null
+  })
+  const deadline = Date.now() + 90000
+  while (Date.now() < deadline) {
+    if (await modelHealthy(8081)) {
+      console.log('[model] bundled Qwen3-8B ready on 127.0.0.1:8081')
+      return
+    }
+    if (!modelServer) break
+    await new Promise((resolve) => setTimeout(resolve, 750))
+  }
+  console.warn('[model] bundled model health check timed out; engine will fall back')
+}
+
+async function ensureBundledModel(): Promise<void> {
+  if (!modelStart) modelStart = startBundledModel()
+  return modelStart
+}
+
+function stopBundledModel(): void {
+  if (!modelServer) return
+  modelServer.kill()
+  modelServer = null
+}
 
 function createWindow(): void {
   win = new BrowserWindow({
@@ -173,12 +269,14 @@ function createWindow(): void {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow()
+  void ensureBundledModel()
 
   if (process.env.EDUANCHOR_SMOKE === '1') {
     void (async () => {
       try {
+        await ensureBundledModel()
         const status = await engine.call<Record<string, unknown>>('system.status')
         console.log('SMOKE_STATUS', JSON.stringify(status))
         const model = await engine.call<{ config: { provider: string; model: string } }>(
@@ -237,4 +335,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('before-quit', () => {
+  stopBundledModel()
 })

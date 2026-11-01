@@ -128,6 +128,7 @@ class EduAnchorEngine:
         self.store.delete_document(doc_id)
 
     def status(self) -> dict:
+        self._refresh_llm()
         return {
             "engine": "eduanchor",
             "llm": {
@@ -166,9 +167,19 @@ class EduAnchorEngine:
             merged["api_key"] = self.model.api_key
         return test_model_config(ModelConfig.from_mapping(merged))
 
+    def _refresh_llm(self) -> None:
+        """Pick up a model server that became ready after engine startup."""
+        if self.llm.available:
+            return
+        refreshed = build_llm(self.model)
+        if refreshed.available:
+            self.llm = refreshed
+            self.interpreter = Interpreter(self.llm, self.settings)
+
     def ask(self, doc_id: str, question: str, mode: str = "explain", condition: str = "c5") -> Answer:
         if mode not in {"explain", "socratic"}:
             raise ValueError("mode must be explain or socratic")
+        self._refresh_llm()
         condition = condition if condition in CONDITIONS else "c5"
         flags = CONDITIONS[condition]
         started = time.perf_counter()
@@ -205,11 +216,27 @@ class EduAnchorEngine:
                     temperature=0.2,
                 )
                 answer.answer = text
+                # C1 does not retrieve for generation. We still retrieve the
+                # textbook evidence only to score fidelity on the same scale as
+                # the other conditions; these passages are never shown to the
+                # generator and are not returned as citations.
+                scoring_evidence = self.retriever.retrieve(
+                    doc_id,
+                    question,
+                    top_k=self.settings.top_k,
+                )
+                answer.support_rate = round(
+                    self.verifier.support_rate(text, scoring_evidence), 4
+                )
+                step(
+                    "Verifier",
+                    "score_only",
+                    f"仅用于评分的教材支持度={answer.support_rate:.3f}（未参与生成）",
+                )
             else:
-                answer.answer = "C1 基线需要连接本地 Qwen3 模型；当前处于离线抽取模式，未生成裸模型回答。"
+                answer.answer = "C1 基线需要连接本地 Qwen3 模型；当前处于离线抽取模式，未生成模型回答"
                 answer.refused = True
                 answer.reason = "llm_unavailable"
-            step("Verifier", "skip", "C1 不进行教材支撑检查")
             answer.trace = trace
             answer.latency_ms = round((time.perf_counter() - started) * 1000, 2)
             self.store.save_session(answer)

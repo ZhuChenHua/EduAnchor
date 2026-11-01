@@ -74,7 +74,7 @@ defineEmits<{
       </div>
       <button class="ghost settings-button" @click="$emit('settings')">模型设置</button>
       <p class="hint">
-        默认连接本地 Ollama <code>qwen3:8b</code>；也可切换到 OpenAI、DeepSeek、DashScope 等兼容 API。
+        默认使用项目内置的 Qwen3-8B Q4_K_M；也可切换到 Ollama、vLLM 或 OpenAI 兼容远程 API。
       </p>
     </div>
   </aside>

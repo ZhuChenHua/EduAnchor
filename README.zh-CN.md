@@ -9,12 +9,12 @@
 ## 为什么做成桌面应用
 
 - **隐私**：教材与学生问题不离开本机。
-- **零部署**：一个安装包（NSIS 或便携版），不需要服务器、域名或云端 GPU。
+- **零部署**：一个完整离线包（或轻量安装包），不需要服务器、域名或云端 GPU。
 - **离线演示**：断网也能完成完整演示。
 - **可复现**：演示、用户研究与论文实验使用同一个版本化产物。
-- **消费级硬件**：Qwen3-8B GGUF（4-bit）通过 Ollama / llama.cpp 运行，或 AWQ 通过 vLLM 运行。
+- **消费级硬件**：内置 Qwen3-8B Q4_K_M + llama.cpp；AWQ + vLLM 为可选后端。
 
-渲染层、Electron 主进程与 Python 引擎全部在本机运行。引擎是子进程，通过标准输入输出的逐行 JSON-RPC 通信，**不暴露 HTTP 端口**。
+渲染层、Electron 主进程与 Python 引擎全部在本机运行。引擎是子进程，通过标准输入输出的逐行 JSON-RPC 通信；内置模型服务仅绑定 **loopback**。
 
 ## 仓库结构
 
@@ -64,6 +64,7 @@ npm run dev
 
 | 服务商 | Base URL | 默认模型 | API Key |
 | --- | --- | --- | --- |
+| 内置 llama.cpp（默认） | `http://127.0.0.1:8081/v1` | `qwen3-8b` | 不需要 |
 | Ollama（本地，GGUF） | `http://127.0.0.1:11434/v1` | `qwen3:8b` | 不需要 |
 | vLLM（本地，AWQ） | `http://127.0.0.1:8000/v1` | `Qwen/Qwen3-8B-AWQ` | 不需要 |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | 需要 |
@@ -75,48 +76,47 @@ npm run dev
 
 **测试连接**会先发一次短对话请求再保存。API Key 不会返回给渲染层，也不会写入日志；它以明文保存在本机 `model.json` 中。
 
-### 本地默认：Qwen3-8B 的两个量化版本
+### 内置默认：Qwen3-8B Q4_K_M
 
-默认生成模型是 Qwen3-8B，支持 ModelScope 上的两种官方量化版本：
+项目直接携带量化模型与运行时，不依赖 Ollama：
 
-| 版本 | 运行方式 | 端点 | 模型名 | 说明 |
-| --- | --- | --- | --- | --- |
-| GGUF Q4_K_M | Ollama / llama.cpp | `http://127.0.0.1:11434/v1` | `qwen3:8b` | CPU 或消费级 GPU，配置最简单 |
-| AWQ | vLLM | `http://127.0.0.1:8000/v1` | `Qwen/Qwen3-8B-AWQ` | NVIDIA GPU；vLLM 需 Linux/WSL2 |
+- `models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf`（约 5.0 GB）
+- `runtime/llama/llama-server.exe` 及其 DLL
 
-**GGUF（Ollama）**。从官方仓库拉取：
-
-```powershell
-ollama pull qwen3:8b
-ollama serve
-```
-
-或从 ModelScope 下载官方 GGUF（国内推荐）：
+这两个目录因体积较大不进入 Git，但属于本地项目和完整离线包。`npm run dev` 会在 `http://127.0.0.1:8081/v1` 启动 `llama-server`，模型别名 `qwen3-8b`；默认 provider 为 `llamacpp`。如需从 ModelScope 重新下载权重：
 
 ```powershell
 uv tool install modelscope
 modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir .\models\Qwen3-8B-GGUF
 ```
 
-用 Q4_K_M 文件创建 Ollama 模型（文件名按实际下载结果调整）：
+构建包含权重与运行时的完整离线包：
 
 ```powershell
-@"
-FROM ./models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf
-PARAMETER num_ctx 8192
-"@ | Set-Content Modelfile
-ollama create qwen3:8b -f Modelfile
-ollama serve
+npm run dist:full
 ```
 
-**AWQ（vLLM）**。下载 AWQ 版本并在 Linux/WSL2 上启动服务：
+输出位于 `code/desktop/release-full/`，使用 ZIP 是因为内置模型超过 NSIS 的实用体积上限。`npm run dist` 仍生成不含权重的轻量安装包。
+
+### 可选本地后端
+
+**AWQ + vLLM。** 下载 AWQ 版本并在 Linux/WSL2 上启动：
 
 ```powershell
 modelscope download --model Qwen/Qwen3-8B-AWQ --local_dir .\models\Qwen3-8B-AWQ
 vllm serve .\models\Qwen3-8B-AWQ --port 8000 --served-model-name Qwen/Qwen3-8B-AWQ
 ```
 
-然后把 Base URL 设为 `http://127.0.0.1:8000/v1`，模型名设为 `Qwen/Qwen3-8B-AWQ`。GGUF 也可以用 `llama-server -m <文件> --port 8080` 启动，Base URL 设为 `http://127.0.0.1:8080/v1`。
+然后把 Base URL 设为 `http://127.0.0.1:8000/v1`，模型名设为 `Qwen/Qwen3-8B-AWQ`。
+
+**Ollama。** 如偏好 Ollama，可拉取 `qwen3:8b` 或导入同一 GGUF：
+
+```powershell
+ollama pull qwen3:8b
+ollama serve
+```
+
+然后选择 Ollama 预设。Ollama 与 vLLM 是选项，不是运行前提。
 
 ### 远程厂商 API
 
@@ -125,9 +125,9 @@ vllm serve .\models\Qwen3-8B-AWQ --port 8000 --served-model-name Qwen/Qwen3-8B-A
 环境变量覆盖：
 
 ```powershell
-$env:EDUANCHOR_LLM_PROVIDER = "ollama"       # ollama | openai | deepseek | dashscope | moonshot | siliconflow | custom
-$env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:11434/v1"
-$env:EDUANCHOR_LLM_MODEL = "qwen3:8b"
+$env:EDUANCHOR_LLM_PROVIDER = "llamacpp"      # llamacpp | ollama | vllm | openai | deepseek | dashscope | moonshot | siliconflow | custom
+$env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:8081/v1"
+$env:EDUANCHOR_LLM_MODEL = "qwen3-8b"
 $env:EDUANCHOR_LLM_API_KEY = "..."           # 仅远程厂商需要
 ```
 
@@ -175,8 +175,8 @@ pwsh ./scripts/package.ps1          # 构建引擎 + electron-builder
 
 输出：
 
-- `code/desktop/release/EduAnchor-Setup-0.1.0-x64.exe`
-- `code/desktop/release/EduAnchor-Portable-0.1.0-x64.exe`
+- 轻量包：`code/desktop/release/EduAnchor-Setup-0.1.0-x64.exe`、`EduAnchor-Portable-0.1.0-x64.exe`
+- 完整离线包：在 `code/desktop` 运行 `npm run dist:full`，输出 `release-full/EduAnchor-0.1.0-x64.zip`（含 Qwen3-8B 与 llama.cpp）
 
 详细步骤、离线模型分发、代码签名与故障排查见 [docs/DEPLOYMENT.zh-CN.md](docs/DEPLOYMENT.zh-CN.md)。
 
@@ -189,9 +189,9 @@ pwsh ./scripts/package.ps1          # 构建引擎 + electron-builder
 | 环境变量 | 默认值 | 作用 |
 | --- | --- | --- |
 | `EDUANCHOR_DATA_DIR` | `%LOCALAPPDATA%\EduAnchor` | SQLite、索引、会话 |
-| `EDUANCHOR_LLM_PROVIDER` | `ollama` | `ollama`、`openai`、`deepseek`、`dashscope`、`moonshot`、`siliconflow`、`custom` |
-| `EDUANCHOR_LLM_BASE_URL` | `http://127.0.0.1:11434/v1` | OpenAI 兼容端点 |
-| `EDUANCHOR_LLM_MODEL` | `qwen3:8b` | 模型名 |
+| `EDUANCHOR_LLM_PROVIDER` | `llamacpp` | `llamacpp`、`ollama`、`vllm`、`openai`、`deepseek`、`dashscope`、`moonshot`、`siliconflow`、`custom` |
+| `EDUANCHOR_LLM_BASE_URL` | `http://127.0.0.1:8081/v1` | OpenAI 兼容端点 |
+| `EDUANCHOR_LLM_MODEL` | `qwen3-8b` | 模型名 |
 | `EDUANCHOR_LLM_API_KEY` | 空 | 远程厂商密钥 |
 | `EDUANCHOR_LLM_TIMEOUT` | `180` | 秒 |
 | `EDUANCHOR_EMBED_BACKEND` | `auto` | `auto`、`bge` 或 `hash` |

@@ -9,7 +9,7 @@ build/
 dist/
 
 # Engine runtime data
-code/engine/.data/
+code/engine/.data*/
 code/engine/.smoke*/
 
 # Desktop
@@ -49,3 +49,8 @@ Thumbs.db
 /paper/
 /面向教育领域的教材锚定多智能体解读平台.md
 /code/results.json
+
+# Bundled model weights and runtime (large binaries, distributed outside Git)
+/models/
+/runtime/
+code/desktop/release-full/

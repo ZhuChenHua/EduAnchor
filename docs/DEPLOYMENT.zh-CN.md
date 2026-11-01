@@ -4,24 +4,24 @@
 
 本文说明如何把 EduAnchor 打包成 Windows 桌面应用、如何离线分发模型，以及如何验证安装包。
 
-## 1. 交付物
+## 1. 产物
 
 ```
-EduAnchor-Setup-x.y.z-x64.exe        NSIS 安装包
-EduAnchor-Portable-x.y.z-x64.exe     便携版单文件启动器
+EduAnchor-Setup-x.y.z-x64.exe        轻量 NSIS 安装包
+EduAnchor-Portable-x.y.z-x64.exe     轻量便携版
+release-full/EduAnchor-0.1.0-x64.zip 完整离线包（含模型）
 ```
 
-安装包包含：
+有两个产物：
 
-- Electron 运行时与 Vue 渲染层（`dist/`）。
-- Electron 主进程/preload 代码（`dist-electron/`）。
-- PyInstaller `onedir` 形式的 Python 引擎，位于 `resources/engine/`
-  （`eduanchor-engine.exe` + `_internal/`）。
+- 轻量包（`npm run dist`）：包含 Electron、Vue 渲染层与
+  `resources/engine/` 下的 PyInstaller 引擎；不含模型与 BGE-M3，约 120 MB。
+- 完整离线包（`npm run dist:full`）：额外包含 `resources/models/Qwen3-8B-GGUF/`
+  与 `resources/llama/`。由于模型约 5 GB，超过 NSIS 的实用上限，因此使用 ZIP。
 
-安装包**不包含**语言模型与 BGE-M3 权重。Qwen3-8B 通过本地
-OpenAI 兼容端点（Ollama 或 llama.cpp）提供。没有模型时，引擎运行
-抽取式解读器；没有 BGE-M3 时，使用确定性哈希向量。两个降级路径都是
-有意设计的，安装包体积约 120 MB。
+完整包是课堂部署的默认方式。应用启动时在 `127.0.0.1:8081` 拉起 `llama-server`，
+模型别名 `qwen3-8b`。Ollama、vLLM 与远程 API 都是可选后端。没有模型时，引擎
+回退为抽取式解释器；没有 BGE-M3 时使用确定性哈希嵌入。
 
 ## 2. 环境要求
 
@@ -31,7 +31,7 @@ OpenAI 兼容端点（Ollama 或 llama.cpp）提供。没有模型时，引擎�
 | Node.js | 20+ | 渲染层与 Electron 工具链 |
 | uv | 0.8+ | Python 引擎，基于锁文件 |
 | Python | 3.11+ | uv 可自动安装 |
-| Ollama / llama.cpp / vLLM | 可选 | 本地 Qwen3-8B 端点（GGUF 或 AWQ） |
+| llama.cpp + Qwen3-8B | 随完整包内置 | 轻量包可选 Ollama/vLLM |
 
 ## 3. 开发运行
 
@@ -138,36 +138,39 @@ JSON-RPC 握手失败或打包路径错误。
 
 ## 7. 离线模型分发
 
-EduAnchor 自身不下载模型。可选三种部署方式：
+EduAnchor 自身不下载模型。可选以下部署方式：
 
-### A. 预装 Ollama / vLLM（最简单）
+### A. 内置 llama.cpp + Qwen3-8B（默认）
 
-在目标机联网一次：
+项目包含：
 
-```powershell
-ollama pull qwen3:8b
-ollama serve
+```
+models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf
+runtime/llama/llama-server.exe
 ```
 
-国内网络建议从 ModelScope 下载官方量化版：
+两者不进入 Git，由 `npm run dist:full` 打包到 `resources/models/` 与
+`resources/llama/`。应用启动时，Electron 主进程在 `127.0.0.1:8081` 启动服务，
+等待健康检查通过后再启动引擎；默认 provider 为 `llamacpp`。首次运行不需要
+安装 Ollama，也不需要联网下载模型。
+
+重新下载或校验权重：
 
 ```powershell
 uv tool install modelscope
 modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir .\models\Qwen3-8B-GGUF
 ```
 
-然后用 Q4_K_M 的 GGUF 导入 Ollama（文件名按实际下载结果调整）：
+### B. 可选 Ollama 或 vLLM
+
+若实验室已经管理 Ollama：
 
 ```powershell
-@"
-FROM ./models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf
-PARAMETER num_ctx 8192
-"@ | Set-Content Modelfile
-ollama create qwen3:8b -f Modelfile
+ollama pull qwen3:8b
 ollama serve
 ```
 
-AWQ 版本可从 ModelScope 下载，并在 Linux/WSL2 上用 vLLM 启动：
+AWQ 版本可在 Linux/WSL2 上用 vLLM 启动：
 
 ```powershell
 modelscope download --model Qwen/Qwen3-8B-AWQ --local_dir .\models\Qwen3-8B-AWQ
@@ -176,34 +179,22 @@ $env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:8000/v1"
 $env:EDUANCHOR_LLM_MODEL = "Qwen/Qwen3-8B-AWQ"
 ```
 
-若需要完全离线的机房镜像，可预填充 Ollama 模型目录，或把模型烘焙进系统镜像。
-
-### B. 随包分发 llama.cpp 服务
-
-分发 `llama-server.exe` 与 Qwen3-8B GGUF（Q4_K_M），先启动服务：
-
-```powershell
-llama-server -m qwen3-8b-q4_k_m.gguf --port 8080
-$env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:8080/v1"
-```
-
-模型放在安装包外，避免多 GB 的安装体积。
+两者都是内置路径的替代项，不是运行前提。
 
 ### C. 远程厂商 API
 
-**模型设置**对话框同样支持任意 OpenAI 兼容端点，内置 OpenAI、DeepSeek、
-阿里云百炼（Qwen）、Moonshot、硅基流动等预设。当前配置保存在
+同一个 **模型设置** 对话框接受任意 OpenAI 兼容端点，内置 OpenAI、DeepSeek、
+阿里云百炼（Qwen）、Moonshot 与硅基流动预设。配置保存在
 `%LOCALAPPDATA%\EduAnchor\model.json`（或 `EDUANCHOR_DATA_DIR/model.json`），
 环境变量优先。
 
-远程服务商会收到检索到的教材片段，仅在课程与版权政策允许时使用。API Key
-不会返回给渲染层或写入日志，但会以明文保存在 `model.json`；公共电脑建议用
+远程服务商会收到检索到的教材片段，请确认课程与版权政策允许后再使用。API Key
+不会返回渲染层，也不会写入日志，但在 `model.json` 中为明文；公共电脑上建议使用
 环境变量或独立系统账户。
 
-### D. 哈希降级（无模型）
+### D. 哈希回退（无模型）
 
-适合界面评审、结题验收与离线演示。回答为抽取式且严格引用原文；
-C1 不可用，因为它需要生成模型。
+用于界面评审、评分与离线演示。回答为抽取式引用；C1 需要生成模型，因此不可用。
 
 ## 8. 首次运行与数据目录
 
@@ -247,6 +238,6 @@ C1 不可用，因为它需要生成模型。
 
 - 以 Windows 为主；macOS/Linux 需要调整打包与路径。
 - 不支持 OCR、插图、公式与表格。
-- 默认安装包使用哈希向量；BGE-M3 需要可选构建。
-- 不内置 Qwen3-8B；应用期望本地 OpenAI 兼容端点。
-- 主实验表在完整 Qwen 实验完成前保持占位。
+- 轻量安装包不含模型权重；课堂一键部署请使用完整离线 ZIP。
+- 默认评测使用哈希向量；BGE-M3 需要可选构建。
+- 当前结果基于一本 6 页教材与 48 道题；多教材评测与用户研究仍在进行。

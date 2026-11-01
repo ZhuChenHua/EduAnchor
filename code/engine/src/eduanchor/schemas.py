@@ -101,6 +101,8 @@ class EvalMetrics(BaseModel):
     hallucination_rate: float = 0.0
     false_refusal_rate: float = 0.0
     refusal_accuracy: float = 0.0
+    clear_refusal_accuracy: float = 0.0
+    borderline_refusal_accuracy: float = 0.0
     answer_rate_out: float = 0.0
     relevance: float = 0.0
     mean_latency_ms: float = 0.0

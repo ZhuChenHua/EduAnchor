@@ -9,6 +9,7 @@
     "build": "vite build && tsc -p tsconfig.electron.json",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc -p tsconfig.electron.json --noEmit",
     "dist": "npm run build && electron-builder",
+    "dist:full": "npm run build && electron-builder --config electron-builder.full.json",
     "preview": "vite preview"
   },
   "dependencies": {

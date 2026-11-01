@@ -9,12 +9,12 @@
 ## Why a desktop app
 
 - **Privacy**: textbooks and student questions never leave the machine.
-- **Zero deployment**: one installer (NSIS or portable); no server, domain, or cloud GPU.
+- **Zero deployment**: one full offline package (or a small code-only installer); no server, domain, or cloud GPU.
 - **Offline demos**: works with networking disabled.
 - **Reproducibility**: the same artifact is used for the demo, the user study, and the paper.
-- **Consumer hardware**: Qwen3-8B GGUF (4-bit) via Ollama/llama.cpp, or AWQ via vLLM.
+- **Consumer hardware**: built-in Qwen3-8B Q4_K_M via llama.cpp; AWQ via vLLM is optional.
 
-The renderer, Electron main process, and Python engine all run locally. The engine is a child process speaking newline-delimited JSON-RPC over stdio; **no HTTP port is exposed**.
+The renderer, Electron main process, and Python engine all run locally. The engine is a child process speaking newline-delimited JSON-RPC over stdio; the bundled model server binds to **loopback only**.
 
 ## Repository layout
 
@@ -44,13 +44,16 @@ uv sync
 uv run eduanchor seed            # import the bundled sample textbook
 uv run eduanchor doctor          # show LLM/embedder/status
 
+# CLI/eval only: start the bundled model in a second terminal
+pwsh ../scripts/start-model.ps1
+
 # 2) Desktop app
 cd ../desktop
 npm install
 npm run dev
 ```
 
-The app starts the engine automatically (`uv run eduanchor-rpc` in development, a bundled executable in production). If no local LLM is available, the engine uses a grounded **extractive interpreter** and a deterministic hash embedder, so the full UI works without downloads.
+The app starts the engine and, when the bundled files are present, the built-in llama.cpp model server. If no model is available, the engine uses a grounded **extractive interpreter** and a deterministic hash embedder, so the full UI still works.
 
 ### Import your own textbook
 
@@ -62,6 +65,7 @@ Open **Model settings** in the sidebar. The engine supports any OpenAI-compatibl
 
 | Provider | Base URL | Default model | API key |
 | --- | --- | --- | --- |
+| Built-in llama.cpp (default) | `http://127.0.0.1:8081/v1` | `qwen3-8b` | no |
 | Ollama (local, GGUF) | `http://127.0.0.1:11434/v1` | `qwen3:8b` | no |
 | vLLM (local, AWQ) | `http://127.0.0.1:8000/v1` | `Qwen/Qwen3-8B-AWQ` | no |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | yes |
@@ -73,39 +77,29 @@ Open **Model settings** in the sidebar. The engine supports any OpenAI-compatibl
 
 The **Test connection** button performs a short chat request before saving. API keys are never returned to the renderer or written to logs; they are stored in the local `model.json` file (plain text on disk).
 
-### Local default: Qwen3-8B, two quantized builds
+### Built-in default: Qwen3-8B Q4_K_M
 
-Qwen3-8B is the default generation model. Both official ModelScope builds are supported:
+The project ships the quantized model and its runtime, so the application does not need Ollama:
 
-| Build | Runtime | Endpoint | Model name | Notes |
-| --- | --- | --- | --- | --- |
-| GGUF Q4_K_M | Ollama / llama.cpp | `http://127.0.0.1:11434/v1` | `qwen3:8b` | CPU or consumer GPU; simplest setup |
-| AWQ | vLLM | `http://127.0.0.1:8000/v1` | `Qwen/Qwen3-8B-AWQ` | NVIDIA GPU; vLLM runs on Linux/WSL2 |
+- `models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf` (about 5.0 GB)
+- `runtime/llama/llama-server.exe` plus its DLLs
 
-**GGUF via Ollama.** Pull from the registry:
-
-```powershell
-ollama pull qwen3:8b
-ollama serve
-```
-
-Or download the official GGUF from ModelScope (recommended in mainland China):
+Both directories are excluded from Git because of their size, but they are part of the local project and the full offline package. `npm run dev` starts `llama-server` at `http://127.0.0.1:8081/v1` with alias `qwen3-8b`; the default provider is `llamacpp`. To refresh the weights from ModelScope:
 
 ```powershell
 uv tool install modelscope
 modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir .\models\Qwen3-8B-GGUF
 ```
 
-Create an Ollama model from the Q4_K_M file (adjust the filename if needed):
+To build the full offline distribution (model plus runtime):
 
 ```powershell
-@"
-FROM ./models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf
-PARAMETER num_ctx 8192
-"@ | Set-Content Modelfile
-ollama create qwen3:8b -f Modelfile
-ollama serve
+npm run dist:full
 ```
+
+This produces a ZIP in `code/desktop/release-full/`. A ZIP is used because the bundled model exceeds the practical NSIS size limit. `npm run dist` still builds the small code-only installer.
+
+### Optional local backends
 
 **AWQ via vLLM.** Download the AWQ build and serve it on Linux/WSL2:
 
@@ -114,7 +108,16 @@ modelscope download --model Qwen/Qwen3-8B-AWQ --local_dir .\models\Qwen3-8B-AWQ
 vllm serve .\models\Qwen3-8B-AWQ --port 8000 --served-model-name Qwen/Qwen3-8B-AWQ
 ```
 
-Then set the Base URL to `http://127.0.0.1:8000/v1` and the model name to `Qwen/Qwen3-8B-AWQ`. The GGUF build can also be served with `llama-server -m <file> --port 8080` and the Base URL `http://127.0.0.1:8080/v1`.
+Then set the Base URL to `http://127.0.0.1:8000/v1` and the model name to `Qwen/Qwen3-8B-AWQ`.
+
+**Ollama.** If you prefer Ollama, pull `qwen3:8b` or import the same GGUF:
+
+```powershell
+ollama pull qwen3:8b
+ollama serve
+```
+
+Then select the Ollama preset. Ollama and vLLM are options, not requirements.
 
 ### Remote provider APIs
 
@@ -123,9 +126,9 @@ Pick a preset, paste the API key, test, and save. **A remote provider receives t
 Environment overrides:
 
 ```powershell
-$env:EDUANCHOR_LLM_PROVIDER = "ollama"       # ollama | openai | deepseek | dashscope | moonshot | siliconflow | custom
-$env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:11434/v1"
-$env:EDUANCHOR_LLM_MODEL = "qwen3:8b"
+$env:EDUANCHOR_LLM_PROVIDER = "llamacpp"      # llamacpp | ollama | vllm | openai | deepseek | dashscope | custom
+$env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:8081/v1"
+$env:EDUANCHOR_LLM_MODEL = "qwen3-8b"
 $env:EDUANCHOR_LLM_API_KEY = "..."           # only for remote providers
 ```
 
@@ -185,7 +188,7 @@ npm run dist
 a code-signing certificate or Windows symbolic-link privileges. Enable it (and
 configure a certificate) for a signed public release.
 
-The packaged app expects the engine at `resources/engine/eduanchor-engine.exe`, which `package.ps1` arranges through `extraResources`.
+The packaged app expects the engine at `resources/engine/eduanchor-engine.exe`, which `package.ps1` arranges through `extraResources`. For the classroom build with the model and runtime, run `npm run dist:full` in `code/desktop`; it writes a ZIP to `release-full/`.
 
 ## Academic manuscript
 
@@ -200,9 +203,9 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for packaging, offline model distri
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `EDUANCHOR_DATA_DIR` | `%LOCALAPPDATA%\EduAnchor` | SQLite DB, indexes, sessions |
-| `EDUANCHOR_LLM_PROVIDER` | `ollama` | `ollama`, `openai`, `deepseek`, `dashscope`, `moonshot`, `siliconflow`, `custom` |
-| `EDUANCHOR_LLM_BASE_URL` | `http://127.0.0.1:11434/v1` | OpenAI-compatible endpoint |
-| `EDUANCHOR_LLM_MODEL` | `qwen3:8b` | Model name |
+| `EDUANCHOR_LLM_PROVIDER` | `llamacpp` | `llamacpp`, `ollama`, `vllm`, `openai`, `deepseek`, `dashscope`, `moonshot`, `siliconflow`, `custom` |
+| `EDUANCHOR_LLM_BASE_URL` | `http://127.0.0.1:8081/v1` | OpenAI-compatible endpoint |
+| `EDUANCHOR_LLM_MODEL` | `qwen3-8b` | Model name |
 | `EDUANCHOR_LLM_API_KEY` | empty | Remote provider key |
 | `EDUANCHOR_LLM_TIMEOUT` | `180` | Seconds |
 | `EDUANCHOR_EMBED_BACKEND` | `auto` | `auto`, `bge`, or `hash` |

@@ -9,6 +9,13 @@ from pathlib import Path
 from typing import Any
 
 PROVIDERS: dict[str, dict[str, Any]] = {
+    "llamacpp": {
+        "label": "Built-in Qwen3-8B (GGUF)",
+        "base_url": "http://127.0.0.1:8081/v1",
+        "model": "qwen3-8b",
+        "requires_key": False,
+        "local": True,
+    },
     "ollama": {
         "label": "Ollama (local, GGUF)",
         "base_url": "http://127.0.0.1:11434/v1",
@@ -67,7 +74,7 @@ PROVIDERS: dict[str, dict[str, Any]] = {
     },
 }
 
-DEFAULT_PROVIDER = "ollama"
+DEFAULT_PROVIDER = "llamacpp"
 _ENV_KEYS = {
     "EDUANCHOR_LLM_PROVIDER": "provider",
     "EDUANCHOR_LLM_BASE_URL": "base_url",
@@ -84,8 +91,8 @@ def provider_info(provider: str) -> dict[str, Any]:
 @dataclass(slots=True)
 class ModelConfig:
     provider: str = DEFAULT_PROVIDER
-    base_url: str = "http://127.0.0.1:11434/v1"
-    model: str = "qwen3:8b"
+    base_url: str = "http://127.0.0.1:8081/v1"
+    model: str = "qwen3-8b"
     api_key: str = ""
     temperature: float = 0.2
     max_tokens: int = 900
@@ -104,7 +111,7 @@ class ModelConfig:
 
     @property
     def is_local(self) -> bool:
-        return self.provider == "ollama" or any(
+        return self.provider in {"llamacpp", "ollama", "vllm"} or any(
             host in self.base_url for host in ("127.0.0.1", "localhost", "0.0.0.0")
         )
 

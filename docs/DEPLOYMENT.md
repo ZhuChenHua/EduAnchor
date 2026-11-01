@@ -11,18 +11,21 @@ EduAnchor-Setup-x.y.z-x64.exe       NSIS installer
 EduAnchor-Portable-x.y.z-x64.exe    single-file portable launcher
 ```
 
-The installer contains:
+There are two artifacts:
 
-- Electron runtime and the Vue renderer (`dist/`).
-- Electron main/preload code (`dist-electron/`).
-- A PyInstaller `onedir` Python engine at `resources/engine/`
-  (`eduanchor-engine.exe` + `_internal/`).
+- `EduAnchor-Setup-x.y.z-x64.exe` / `EduAnchor-Portable-x.y.z-x64.exe`:
+  code-only build (`npm run dist`). Contains Electron, the Vue renderer, and
+  the PyInstaller `onedir` engine at `resources/engine/`. It does **not**
+  contain the model or BGE-M3, and is about 120 MB.
+- `release-full/EduAnchor-0.1.0-x64.zip`: full offline build
+  (`npm run dist:full`). Adds `resources/models/Qwen3-8B-GGUF/` and
+  `resources/llama/`. It is a ZIP because the 5 GB model exceeds the practical
+  NSIS limit.
 
-The installer **does not** contain a language model or the BGE-M3 weights.
-Qwen3-8B is expected to be served locally through an OpenAI-compatible
-endpoint (Ollama or llama.cpp). Without a model, the engine runs the grounded
+The full build is the intended default for classrooms. The application starts
+`llama-server` at `127.0.0.1:8081` and uses the `qwen3-8b` alias. Ollama, vLLM,
+and remote providers are optional. Without a model, the engine runs the grounded
 extractive interpreter; without BGE-M3 it uses a deterministic hash embedder.
-Both fallbacks are intentional and keep the installer around 120 MB.
 
 ## 2. Prerequisites
 
@@ -32,7 +35,7 @@ Both fallbacks are intentional and keep the installer around 120 MB.
 | Node.js | 20+ | Renderer and Electron tooling |
 | uv | 0.8+ | Python engine, lockfile-based |
 | Python | 3.11+ | uv can install it automatically |
-| Ollama / llama.cpp / vLLM | optional | Local Qwen3-8B endpoint (GGUF or AWQ) |
+| llama.cpp + Qwen3-8B | bundled | Full offline ZIP; code-only build can use Ollama/vLLM |
 
 ## 3. Development run
 
@@ -142,36 +145,40 @@ JSON-RPC handshake, or a packaging path error.
 
 ## 7. Offline model distribution
 
-EduAnchor itself never downloads models. Choose one of these deployment modes:
+EduAnchor itself never downloads models. Choose one deployment mode:
 
-### A. Preinstalled Ollama / vLLM (simplest)
+### A. Built-in llama.cpp + Qwen3-8B (default)
 
-On the target machine, once with network:
+The repository contains:
 
-```powershell
-ollama pull qwen3:8b
-ollama serve
+```
+models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf
+runtime/llama/llama-server.exe
 ```
 
-For mainland China, download the official quantized build from ModelScope:
+Both are excluded from Git and are packaged by `npm run dist:full` into
+`resources/models/` and `resources/llama/`. On launch, the Electron main process
+starts the server on `127.0.0.1:8081` with alias `qwen3-8b`, waits for a health
+check, and only then starts the engine. The default provider is `llamacpp`.
+There is no external runtime dependency and no model download on first run.
+
+To refresh or verify the weights:
 
 ```powershell
 uv tool install modelscope
 modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir .\models\Qwen3-8B-GGUF
 ```
 
-Then import it into Ollama from the Q4_K_M GGUF (adjust the filename if needed):
+### B. Optional Ollama or vLLM
+
+Ollama is useful when a lab already manages it:
 
 ```powershell
-@"
-FROM ./models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf
-PARAMETER num_ctx 8192
-"@ | Set-Content Modelfile
-ollama create qwen3:8b -f Modelfile
+ollama pull qwen3:8b
 ollama serve
 ```
 
-For the AWQ build, download it and serve with vLLM on Linux/WSL2:
+For AWQ, download it and serve with vLLM on Linux/WSL2:
 
 ```powershell
 modelscope download --model Qwen/Qwen3-8B-AWQ --local_dir .\models\Qwen3-8B-AWQ
@@ -180,27 +187,15 @@ $env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:8000/v1"
 $env:EDUANCHOR_LLM_MODEL = "Qwen/Qwen3-8B-AWQ"
 ```
 
-For a fully offline lab image, pre-populate the Ollama model store or bake
-the model into the image.
-
-### B. Bundled llama.cpp server
-
-Ship a `llama-server.exe` plus a GGUF Qwen3-8B file (Q4_K_M) and start it
-before EduAnchor:
-
-```powershell
-llama-server -m qwen3-8b-q4_k_m.gguf --port 8080
-$env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:8080/v1"
-```
-
-Keep the model outside the installer to avoid a multi-GB package.
+Both are alternatives to the built-in path, not prerequisites.
 
 ### C. Remote vendor API
 
-The same **Model settings** dialog accepts any OpenAI-compatible endpoint. Built-in
-presets include OpenAI, DeepSeek, DashScope (Qwen), Moonshot, and SiliconFlow.
-The active configuration is stored in `%LOCALAPPDATA%\EduAnchor\model.json`
-(or `EDUANCHOR_DATA_DIR/model.json`); environment variables override it.
+The same **Model settings** dialog accepts any OpenAI-compatible endpoint.
+Built-in presets include OpenAI, DeepSeek, DashScope (Qwen), Moonshot, and
+SiliconFlow. The active configuration is stored in
+`%LOCALAPPDATA%\EduAnchor\model.json` (or `EDUANCHOR_DATA_DIR/model.json`);
+environment variables override it.
 
 A remote provider receives the retrieved textbook snippets. Use it only when the
 course or copyright policy permits sending excerpts to that vendor. API keys are
@@ -237,7 +232,7 @@ it only removes imported textbooks and session history.
 | 7-Zip "Cannot create symbolic link" | Windows lacks symlink privilege while extracting winCodeSign. Keep `signAndEditExecutable=false` or run packaging as administrator. |
 | Installer is ~500 MB+ | Optional model dependencies were bundled. Check the PyInstaller `excludes`. |
 | Answers are always refused | The query is outside the textbook, or the coverage threshold is too high for the active embedder. Tune `EDUANCHOR_COVERAGE_THRESHOLD` (hash default 0.15; BGE-M3 0.36). |
-| LLM never activates | Check `curl http://127.0.0.1:11434/v1/models`; set `EDUANCHOR_LLM_BASE_URL` / `EDUANCHOR_LLM_MODEL`. |
+| LLM never activates | Check `curl http://127.0.0.1:8081/v1/models` for the built-in server, or the configured Ollama/vLLM endpoint. |
 | PDF import fails | The PDF has no text layer (scanned). OCR is out of scope. |
 
 ## 10. Release checklist
@@ -255,6 +250,6 @@ it only removes imported textbooks and session history.
 
 - Windows is the primary target; macOS/Linux need packaging and path adjustments.
 - No OCR, figures, formulas, or tables.
-- The default bundle uses the hash embedder; BGE-M3 requires an opt-in build.
-- Qwen3-8B is not bundled; the app expects a local OpenAI-compatible endpoint.
-- The evaluation main table is a placeholder until the full Qwen run is complete.
+- The standard code-only installer does not contain model weights; use the full offline ZIP for a one-click classroom deployment.
+- The default evaluation uses the hash embedder; BGE-M3 requires an opt-in build.
+- The reported results use one 6-page textbook and 48 questions; the multi-textbook/user study is ongoing.
