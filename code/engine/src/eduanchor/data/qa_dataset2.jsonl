@@ -1,0 +1,48 @@
+{"question": "什么是样本空间和随机事件？", "scope": "in", "gold_answer": "样本空间是随机试验所有可能结果组成的集合，随机事件是样本空间的子集。", "gold_quote": "随机试验所有可能结果组成的集合称为样本空间，记作 Ω；样本空间的子集称为随机事件。", "doc_id": "3cfc38ee945f"}
+{"question": "条件概率的定义是什么？", "scope": "in", "gold_answer": "条件概率是在事件 B 已发生的条件下事件 A 发生的概率，定义为 P(A|B)=P(AB)/P(B)。", "gold_quote": "条件概率描述在事件 B 已发生的条件下事件 A 发生的可能性，定义为 P(A|B)=P(AB)/P(B)", "doc_id": "3cfc38ee945f"}
+{"question": "全概率公式如何计算？", "scope": "in", "gold_answer": "若 B1,…,Bn 两两互斥且并为 Ω，则 P(A)=ΣP(A|Bi)P(Bi)。", "gold_quote": "P(A)=ΣP(A|Bi)P(Bi)", "doc_id": "3cfc38ee945f"}
+{"question": "贝叶斯公式的作用是什么？", "scope": "in", "gold_answer": "它把先验概率与似然结合，得到后验概率，用于根据新证据更新信念。", "gold_quote": "它把先验概率 P(Bi) 与似然 P(A|Bi) 结合，得到后验概率。", "doc_id": "3cfc38ee945f"}
+{"question": "随机变量的期望和方差分别表示什么？", "scope": "in", "gold_answer": "期望表示长期平均水平，方差表示取值围绕均值的离散程度。", "gold_quote": "期望 E[X] 表示随机变量的长期平均水平，方差 Var(X)=E[(X-E[X])^2] 表示取值围绕均值的离散程度。", "doc_id": "3cfc38ee945f"}
+{"question": "伯努利分布和正态分布有什么区别？", "scope": "in", "gold_answer": "伯努利分布只取 0 和 1，正态分布是连续分布并由均值和方差确定。", "gold_quote": "伯努利分布只取 0 和 1 两个值", "doc_id": "3cfc38ee945f"}
+{"question": "为什么正态分布在统计中重要？", "scope": "in", "gold_answer": "因为许多独立随机变量之和近似服从正态分布，中心极限定理保证样本均值可用正态分布近似。", "gold_quote": "许多独立随机变量之和近似服从正态分布，这由中心极限定理保证", "doc_id": "3cfc38ee945f"}
+{"question": "最大似然估计的基本思想是什么？", "scope": "in", "gold_answer": "选择使观测样本出现概率最大的参数值，连续情形通常最大化对数似然。", "gold_quote": "最大似然估计选择使观测样本出现概率最大的参数值", "doc_id": "3cfc38ee945f"}
+{"question": "最大后验估计与最大似然估计的区别？", "scope": "in", "gold_answer": "最大后验估计在似然之外加入先验分布，最大似然估计不使用先验。", "gold_quote": "最大后验估计在似然之外加入先验分布，最大化后验概率。", "doc_id": "3cfc38ee945f"}
+{"question": "什么是无偏估计？", "scope": "in", "gold_answer": "无偏估计的期望等于真实参数。", "gold_quote": "无偏估计的期望等于真实参数", "doc_id": "3cfc38ee945f"}
+{"question": "什么是置信区间？", "scope": "in", "gold_answer": "置信区间是在重复抽样下以给定覆盖率包含真实参数的区间。", "gold_quote": "置信区间是在重复抽样下以给定覆盖率包含真实参数的区间", "doc_id": "3cfc38ee945f"}
+{"question": "原假设和备择假设分别是什么？", "scope": "in", "gold_answer": "原假设通常表示没有差异或没有效应，备择假设表示希望支持的结论。", "gold_quote": "原假设通常表示没有差异或没有效应，备择假设表示研究者希望支持的结论。", "doc_id": "3cfc38ee945f"}
+{"question": "p 值的含义是什么？", "scope": "in", "gold_answer": "p 值是在原假设成立时得到当前样本或更极端结果的概率，不是原假设为真的概率。", "gold_quote": "p 值是在原假设成立时，得到当前样本或更极端结果的概率。", "doc_id": "3cfc38ee945f"}
+{"question": "第一类错误和第二类错误有什么区别？", "scope": "in", "gold_answer": "第一类错误是原假设为真却被拒绝，第二类错误是原假设为假却没有被拒绝。", "gold_quote": "第一类错误是原假设为真却被拒绝，其概率上限由 α 控制；第二类错误是原假设为假却没有被拒绝。", "doc_id": "3cfc38ee945f"}
+{"question": "显著性水平如何选择？", "scope": "in", "gold_answer": "显著性水平是事先设定的拒绝阈值，越小则拒绝原假设的门槛越严格。", "gold_quote": "显著性水平 α 是事先设定的拒绝阈值", "doc_id": "3cfc38ee945f"}
+{"question": "最小二乘法的目标是什么？", "scope": "in", "gold_answer": "选择使残差平方和最小的参数。", "gold_quote": "最小二乘法选择使残差平方和最小的参数", "doc_id": "3cfc38ee945f"}
+{"question": "岭回归和 Lasso 回归的区别？", "scope": "in", "gold_answer": "岭回归使用 L2 惩罚并整体缩小参数，Lasso 使用 L1 惩罚并能产生稀疏解。", "gold_quote": "岭回归使用 L2 惩罚，即参数平方和，倾向于把参数整体缩小；Lasso 使用 L1 惩罚，即参数绝对值之和，能够把部分参数压到零", "doc_id": "3cfc38ee945f"}
+{"question": "为什么需要正则化？", "scope": "in", "gold_answer": "正则化通过惩罚参数控制模型复杂度，缓解过拟合。", "gold_quote": "正则化在损失函数中加入参数惩罚，以控制模型复杂度。", "doc_id": "3cfc38ee945f"}
+{"question": "训练集、验证集和测试集的作用？", "scope": "in", "gold_answer": "训练集拟合参数，验证集选择超参数和比较模型，测试集只用于最终评估。", "gold_quote": "训练集用于拟合参数，验证集用于选择超参数和比较模型，测试集只在最终评估时使用一次。", "doc_id": "3cfc38ee945f"}
+{"question": "k 折交叉验证的步骤？", "scope": "in", "gold_answer": "把数据分成 k 份，每次用一份作验证集、其余作训练集，重复 k 次后取平均。", "gold_quote": "k 折交叉验证把数据分成 k 份，每次用其中一份作为验证集，其余 k-1 份作为训练集，重复 k 次后取平均。", "doc_id": "3cfc38ee945f"}
+{"question": "准确率和召回率分别衡量什么？", "scope": "in", "gold_answer": "准确率是预测正确样本占全部样本的比例，召回率是真正为正的样本中被预测为正的比例。", "gold_quote": "准确率是预测正确的样本占全部样本的比例；精确率是预测为正的样本中真正为正的比例；召回率是真正为正的样本中被预测为正的比例。", "doc_id": "3cfc38ee945f"}
+{"question": "F1 分数如何计算？", "scope": "in", "gold_answer": "F1 分数是精确率和召回率的调和平均。", "gold_quote": "F1 分数是二者的调和平均", "doc_id": "3cfc38ee945f"}
+{"question": "ROC 曲线和 AUC 的含义？", "scope": "in", "gold_answer": "ROC 曲线以假正率为横轴、真正率为纵轴；AUC 是 ROC 曲线下面积，越接近 1 排序能力越强。", "gold_quote": "ROC 曲线以假正率为横轴、真正率为纵轴，描述分类阈值变化时的取舍；AUC 是 ROC 曲线下面积，取值越接近 1 表示排序能力越强。", "doc_id": "3cfc38ee945f"}
+{"question": "为什么类别不平衡时准确率可能误导？", "scope": "in", "gold_answer": "多数类会主导准确率，例如负类占 95% 时全部预测为负也能得到 95% 的准确率。", "gold_quote": "类别不平衡时，准确率可能被多数类主导，例如负类占 95% 时全部预测为负也能得到 95% 的准确率", "doc_id": "3cfc38ee945f"}
+{"question": "阿司匹林退烧的作用机制是什么？", "scope": "out", "annotations": [{"type": "clear"}], "doc_id": "3cfc38ee945f"}
+{"question": "秦始皇统一六国的主要顺序是什么？", "scope": "out", "annotations": [{"type": "clear"}], "doc_id": "3cfc38ee945f"}
+{"question": "长江的发源地在哪个省级行政区？", "scope": "out", "annotations": [{"type": "clear"}], "doc_id": "3cfc38ee945f"}
+{"question": "Python 的全局解释器锁 GIL 有什么作用？", "scope": "out", "annotations": [{"type": "clear"}], "doc_id": "3cfc38ee945f"}
+{"question": "股票的市盈率通常如何计算？", "scope": "out", "annotations": [{"type": "clear"}], "doc_id": "3cfc38ee945f"}
+{"question": "绿色植物进行光合作用需要哪些外界条件？", "scope": "out", "annotations": [{"type": "clear"}], "doc_id": "3cfc38ee945f"}
+{"question": "联合国安理会五个常任理事国是哪些国家？", "scope": "out", "annotations": [{"type": "clear"}], "doc_id": "3cfc38ee945f"}
+{"question": "贝多芬第五交响曲第一乐章是什么调？", "scope": "out", "annotations": [{"type": "clear"}], "doc_id": "3cfc38ee945f"}
+{"question": "网球比赛中一盘通常如何计分？", "scope": "out", "annotations": [{"type": "clear"}], "doc_id": "3cfc38ee945f"}
+{"question": "Bootstrap 方法如何估计统计量的标准误？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "EM 算法中的 E 步和 M 步分别做什么？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "Metropolis-Hastings 算法的接受率如何计算？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "变分推断中的 ELBO 如何推导？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "高斯过程回归如何选择核函数？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "PCA 中主成分的个数如何确定？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "t-SNE 的困惑度参数有什么作用？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "支持向量机的最大间隔如何求解？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "XGBoost 为什么要使用损失函数的二阶展开？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "Dropout 在训练和测试阶段的行为有什么区别？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "BatchNorm 在推理阶段使用哪组统计量？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "注意力机制中的缩放点积为什么要除以根号 d？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "强化学习中的 Bellman 方程表达什么？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "因果推断中的倾向得分匹配如何构造对照组？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}
+{"question": "生存分析中的 Kaplan-Meier 估计如何处理删失数据？", "scope": "out", "annotations": [{"type": "borderline"}], "doc_id": "3cfc38ee945f"}

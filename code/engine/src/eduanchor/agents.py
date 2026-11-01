@@ -66,7 +66,7 @@ class Interpreter:
                 f"要求：{style}；逐句标注引用编号；证据不足时输出 REFUSE。{extra}"
             )
             try:
-                text = self.llm.chat(SYSTEM_PROMPT, user, temperature=0.15)
+                text = self.llm.chat(SYSTEM_PROMPT, user, temperature=self.settings.temperature)
                 if text:
                     return Interpretation(text=text, used_llm=True)
             except Exception as exc:  # noqa: BLE001 - fall back to extractive mode

@@ -38,6 +38,8 @@ def _latex_escape(text: str) -> str:
 CONDITION_LABELS = {
     "C1": "C1 bare Qwen3-8B",
     "C2": "C2 dense RAG",
+    "C2B": "C2b BM25 only",
+    "C2C": "C2c hybrid, no rerank",
     "C3": "C3 hybrid + refusal prompt",
     "C4": "C4 coverage + verifier",
     "C5": "C5 full EduAnchor",
@@ -52,15 +54,16 @@ def _condition_table(rows: list[dict], caption: str, label: str) -> str:
         r"\setlength{\tabcolsep}{1.8pt}",
         rf"\caption{{{caption}}}",
         rf"\label{{{label}}}",
-        r"\begin{tabular}{@{}lccccc@{}}",
+        r"\begin{tabular}{@{}lcccccc@{}}",
         r"\toprule",
-        r"Condition & Support$\uparrow$ & Halluc.$\downarrow$ & False ref.$\downarrow$ & Out clear$\uparrow$ & Out border$\uparrow$ \\",
+        r"Condition & Support$\uparrow$ & Support$_{\mathrm{ans}}\uparrow$ & Halluc.$\downarrow$ & False ref.$\downarrow$ & Out clear$\uparrow$ & Out border$\uparrow$ \\",
         r"\midrule",
     ]
     for row in rows:
         label_text = CONDITION_LABELS.get(row["condition"], row["condition"])
         lines.append(
             f"{label_text} & {100 * row['support_rate']:.1f} & "
+            f"{100 * row.get('support_answered', row['support_rate']):.1f} & "
             f"{100 * row['hallucination_rate']:.1f} & "
             f"{100 * row['false_refusal_rate']:.1f} & "
             f"{100 * row['clear_refusal_accuracy']:.1f} & "
@@ -83,6 +86,7 @@ class EvaluationRunner:
     ) -> dict:
         rows: list[dict] = []
         in_support: list[float] = []
+        answered_support: list[float] = []
         in_refused = 0
         in_total = 0
         out_refused = 0
@@ -104,6 +108,8 @@ class EvaluationRunner:
                 in_total += 1
                 in_refused += int(answer.refused)
                 in_support.append(0.0 if answer.refused else answer.support_rate)
+                if not answer.refused:
+                    answered_support.append(answer.support_rate)
                 if record.gold_answer:
                     gold = self.engine.embedder.encode([record.gold_answer])[0]
                     pred = self.engine.embedder.encode([answer.answer])[0]
@@ -137,6 +143,7 @@ class EvaluationRunner:
             n_in=in_total,
             n_out=out_total,
             support_rate=support_mean,
+            support_answered=float(np.mean(answered_support)) if answered_support else 0.0,
             hallucination_rate=1.0 - support_mean,
             false_refusal_rate=in_refused / max(in_total, 1),
             refusal_accuracy=out_refused / max(out_total, 1),

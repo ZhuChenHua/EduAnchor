@@ -39,6 +39,10 @@ paper/zh/*.pdf
 paper/zh/*.run.xml
 paper/zh/*.synctex.gz
 
+# Local experiment scratch
+.tmp/
+code/results-*.json
+
 # OS / editor
 .DS_Store
 Thumbs.db

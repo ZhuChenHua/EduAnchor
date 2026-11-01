@@ -34,6 +34,9 @@ class Settings:
         default_factory=lambda: float(os.environ.get("EDUANCHOR_COVERAGE_THRESHOLD", "0.15"))
     )
     support_threshold: float = 0.45
+    temperature: float = field(
+        default_factory=lambda: float(os.environ.get("EDUANCHOR_TEMPERATURE", "0.15"))
+    )
 
     @property
     def db_path(self) -> Path:

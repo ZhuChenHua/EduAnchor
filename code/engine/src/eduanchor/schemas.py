@@ -98,6 +98,7 @@ class EvalMetrics(BaseModel):
     n_in: int = 0
     n_out: int = 0
     support_rate: float = 0.0
+    support_answered: float = 0.0
     hallucination_rate: float = 0.0
     false_refusal_rate: float = 0.0
     refusal_accuracy: float = 0.0

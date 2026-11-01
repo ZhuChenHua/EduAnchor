@@ -32,7 +32,8 @@ uv run eduanchor model test
 
 The settings are stored in `$EDUANCHOR_DATA_DIR/model.json` (default
 `%LOCALAPPDATA%\EduAnchor\model.json`). Environment variables
-`EDUANCHOR_LLM_*` override the file. Without a reachable model, the engine uses
-a grounded extractive interpreter.
+`EDUANCHOR_LLM_*` override the file. `EDUANCHOR_TEMPERATURE=0` gives greedy
+decoding; the paper runs use temperature 0 and seed 42. Without a reachable
+model, the engine uses a grounded extractive interpreter.
 
 Tests: `uv run pytest`.

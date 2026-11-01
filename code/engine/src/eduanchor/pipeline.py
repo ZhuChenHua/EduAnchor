@@ -33,6 +33,8 @@ class Conditions:
 CONDITIONS: dict[str, Conditions] = {
     "c1": Conditions("c1", retrieval=False, bm25=False, dense=False, rerank=False, agents=False, anchor=False),
     "c2": Conditions("c2", retrieval=True, bm25=False, dense=True, rerank=False, agents=False, anchor=False),
+    "c2b": Conditions("c2b", retrieval=True, bm25=True, dense=False, rerank=False, agents=False, anchor=False),
+    "c2c": Conditions("c2c", retrieval=True, bm25=True, dense=True, rerank=False, agents=False, anchor=False),
     "c3": Conditions("c3", retrieval=True, bm25=True, dense=True, rerank=True, agents=False, anchor=False),
     "c4": Conditions("c4", retrieval=True, bm25=True, dense=True, rerank=True, agents=True, anchor=False),
     "c5": Conditions("c5", retrieval=True, bm25=True, dense=True, rerank=True, agents=True, anchor=True),
@@ -213,7 +215,7 @@ class EduAnchorEngine:
                 text = self.llm.chat(
                     "你是一个通用的教学助手，请直接回答问题。",
                     question,
-                    temperature=0.2,
+                    temperature=self.settings.temperature,
                 )
                 answer.answer = text
                 # C1 does not retrieve for generation. We still retrieve the

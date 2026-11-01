@@ -40,6 +40,7 @@ def main() -> None:
 
     seed = sub.add_parser("seed", help="import the bundled sample textbook")
     seed.add_argument("--reset", action="store_true")
+    seed.add_argument("--textbook", choices=["ml", "stats", "all"], default="ml")
 
     imp = sub.add_parser("import", help="import a PDF/Markdown/text textbook")
     imp.add_argument("path")
@@ -68,6 +69,7 @@ def main() -> None:
     evaluation.add_argument("--doc-id")
     evaluation.add_argument("--condition", default="c5")
     evaluation.add_argument("--all-conditions", action="store_true")
+    evaluation.add_argument("--conditions", help="comma-separated condition names, e.g. c3,c5")
     evaluation.add_argument("--mode", choices=["explain", "socratic"], default="explain")
     evaluation.add_argument("--out")
     evaluation.add_argument("--latex-dir")
@@ -95,8 +97,15 @@ def main() -> None:
                 engine.delete_document(document.id)
             for path in settings.index_dir.glob("*.npz"):
                 path.unlink()
-        document = engine.import_sample()
-        _print({"seeded": document.model_dump()})
+        seeded = []
+        if args.textbook in {"ml", "all"}:
+            seeded.append(engine.import_sample().model_dump())
+        if args.textbook in {"stats", "all"}:
+            stats = package_data_dir() / "sample_textbook2.md"
+            seeded.append(
+                engine.import_markdown(stats, title="概率统计与模型评估示例教材").model_dump()
+            )
+        _print({"seeded": seeded})
         return
 
     if args.command == "list":
@@ -142,7 +151,12 @@ def main() -> None:
         dataset = load_dataset(args.dataset)
         doc_id = args.doc_id or _first_doc(engine)
         runner = EvaluationRunner(engine)
-        if args.all_conditions:
+        if args.conditions:
+            names = [name.strip().lower() for name in args.conditions.split(",") if name.strip()]
+            results = runner.run_conditions(
+                dataset, conditions=names, mode=args.mode, default_doc_id=doc_id
+            )
+        elif args.all_conditions:
             results = runner.run_conditions(dataset, mode=args.mode, default_doc_id=doc_id)
         else:
             results = {

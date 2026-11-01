@@ -56,7 +56,7 @@ def test_socratic_mode(tmp_path: Path) -> None:
 def test_ablation_conditions_run(tmp_path: Path) -> None:
     engine = make_engine(tmp_path)
     doc_id = engine.list_documents()[0].id
-    for condition in ("c2", "c3", "c4", "c5"):
+    for condition in ("c2", "c2b", "c2c", "c3", "c4", "c5"):
         answer = engine.ask(doc_id, "什么是交叉验证？", condition=condition)
         assert answer.condition == condition
 
@@ -69,4 +69,5 @@ def test_evaluation_pipeline(tmp_path: Path) -> None:
     metrics = results["metrics"]
     assert metrics["n_in"] + metrics["n_out"] == 5
     assert 0.0 <= metrics["support_rate"] <= 1.0
+    assert 0.0 <= metrics["support_answered"] <= 1.0
     assert 0.0 <= metrics["refusal_accuracy"] <= 1.0
