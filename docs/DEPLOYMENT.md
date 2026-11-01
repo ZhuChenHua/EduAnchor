@@ -32,7 +32,7 @@ Both fallbacks are intentional and keep the installer around 120 MB.
 | Node.js | 20+ | Renderer and Electron tooling |
 | uv | 0.8+ | Python engine, lockfile-based |
 | Python | 3.11+ | uv can install it automatically |
-| Ollama / llama.cpp | optional | Local Qwen3-8B endpoint |
+| Ollama / llama.cpp / vLLM | optional | Local Qwen3-8B endpoint (GGUF or AWQ) |
 
 ## 3. Development run
 
@@ -144,7 +144,7 @@ JSON-RPC handshake, or a packaging path error.
 
 EduAnchor itself never downloads models. Choose one of these deployment modes:
 
-### A. Preinstalled Ollama (simplest)
+### A. Preinstalled Ollama / vLLM (simplest)
 
 On the target machine, once with network:
 
@@ -171,8 +171,17 @@ ollama create qwen3:8b -f Modelfile
 ollama serve
 ```
 
-`Qwen/Qwen3-8B-AWQ` is also available on ModelScope. For a fully offline lab
-image, pre-populate Ollama's model store or bake the model into the image.
+For the AWQ build, download it and serve with vLLM on Linux/WSL2:
+
+```powershell
+modelscope download --model Qwen/Qwen3-8B-AWQ --local_dir .\models\Qwen3-8B-AWQ
+vllm serve .\models\Qwen3-8B-AWQ --port 8000 --served-model-name Qwen/Qwen3-8B-AWQ
+$env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:8000/v1"
+$env:EDUANCHOR_LLM_MODEL = "Qwen/Qwen3-8B-AWQ"
+```
+
+For a fully offline lab image, pre-populate the Ollama model store or bake
+the model into the image.
 
 ### B. Bundled llama.cpp server
 

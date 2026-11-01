@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-**Offline, textbook-grounded multi-agent interpretation platform** — an Electron desktop app backed by a local Python RAG/agent engine. Built for an undergraduate innovation project and an EI conference system paper.
+**Offline, textbook-grounded multi-agent interpretation platform** — an Electron desktop app backed by a local Python RAG/agent engine. This repository is the reference implementation for an academic paper on textbook-anchored, evidence-grounded learning support.
 
 > The model reads only the textbook you give it. Every answer carries page-level provenance, and when the textbook does not cover a question, the system refuses instead of guessing.
 
@@ -12,7 +12,7 @@
 - **Zero deployment**: one installer (NSIS or portable); no server, domain, or cloud GPU.
 - **Offline demos**: works with networking disabled.
 - **Reproducibility**: the same artifact is used for the demo, the user study, and the paper.
-- **Consumer hardware**: Qwen3-8B at 4-bit via Ollama/llama.cpp.
+- **Consumer hardware**: Qwen3-8B GGUF (4-bit) via Ollama/llama.cpp, or AWQ via vLLM.
 
 The renderer, Electron main process, and Python engine all run locally. The engine is a child process speaking newline-delimited JSON-RPC over stdio; **no HTTP port is exposed**.
 
@@ -62,7 +62,8 @@ Open **Model settings** in the sidebar. The engine supports any OpenAI-compatibl
 
 | Provider | Base URL | Default model | API key |
 | --- | --- | --- | --- |
-| Ollama (local) | `http://127.0.0.1:11434/v1` | `qwen3:8b` | no |
+| Ollama (local, GGUF) | `http://127.0.0.1:11434/v1` | `qwen3:8b` | no |
+| vLLM (local, AWQ) | `http://127.0.0.1:8000/v1` | `Qwen/Qwen3-8B-AWQ` | no |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | yes |
 | DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` | yes |
 | DashScope (Qwen) | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` | yes |
@@ -72,16 +73,23 @@ Open **Model settings** in the sidebar. The engine supports any OpenAI-compatibl
 
 The **Test connection** button performs a short chat request before saving. API keys are never returned to the renderer or written to logs; they are stored in the local `model.json` file (plain text on disk).
 
-### Local default: Qwen3-8B quantized
+### Local default: Qwen3-8B, two quantized builds
 
-Option A, Ollama's registry:
+Qwen3-8B is the default generation model. Both official ModelScope builds are supported:
+
+| Build | Runtime | Endpoint | Model name | Notes |
+| --- | --- | --- | --- | --- |
+| GGUF Q4_K_M | Ollama / llama.cpp | `http://127.0.0.1:11434/v1` | `qwen3:8b` | CPU or consumer GPU; simplest setup |
+| AWQ | vLLM | `http://127.0.0.1:8000/v1` | `Qwen/Qwen3-8B-AWQ` | NVIDIA GPU; vLLM runs on Linux/WSL2 |
+
+**GGUF via Ollama.** Pull from the registry:
 
 ```powershell
 ollama pull qwen3:8b
 ollama serve
 ```
 
-Option B, ModelScope (recommended in mainland China). Download the official GGUF build:
+Or download the official GGUF from ModelScope (recommended in mainland China):
 
 ```powershell
 uv tool install modelscope
@@ -99,7 +107,14 @@ ollama create qwen3:8b -f Modelfile
 ollama serve
 ```
 
-AWQ builds are also available at `Qwen/Qwen3-8B-AWQ`. Alternatively, serve the GGUF with `llama-server -m <file> --port 8080` and set the Base URL to `http://127.0.0.1:8080/v1`.
+**AWQ via vLLM.** Download the AWQ build and serve it on Linux/WSL2:
+
+```powershell
+modelscope download --model Qwen/Qwen3-8B-AWQ --local_dir .\models\Qwen3-8B-AWQ
+vllm serve .\models\Qwen3-8B-AWQ --port 8000 --served-model-name Qwen/Qwen3-8B-AWQ
+```
+
+Then set the Base URL to `http://127.0.0.1:8000/v1` and the model name to `Qwen/Qwen3-8B-AWQ`. The GGUF build can also be served with `llama-server -m <file> --port 8080` and the Base URL `http://127.0.0.1:8080/v1`.
 
 ### Remote provider APIs
 

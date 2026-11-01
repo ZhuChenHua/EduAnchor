@@ -10,9 +10,16 @@ from typing import Any
 
 PROVIDERS: dict[str, dict[str, Any]] = {
     "ollama": {
-        "label": "Ollama (local)",
+        "label": "Ollama (local, GGUF)",
         "base_url": "http://127.0.0.1:11434/v1",
         "model": "qwen3:8b",
+        "requires_key": False,
+        "local": True,
+    },
+    "vllm": {
+        "label": "vLLM (local, AWQ)",
+        "base_url": "http://127.0.0.1:8000/v1",
+        "model": "Qwen/Qwen3-8B-AWQ",
         "requires_key": False,
         "local": True,
     },

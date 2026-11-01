@@ -31,7 +31,7 @@ OpenAI 兼容端点（Ollama 或 llama.cpp）提供。没有模型时，引擎�
 | Node.js | 20+ | 渲染层与 Electron 工具链 |
 | uv | 0.8+ | Python 引擎，基于锁文件 |
 | Python | 3.11+ | uv 可自动安装 |
-| Ollama / llama.cpp | 可选 | 本地 Qwen3-8B 端点 |
+| Ollama / llama.cpp / vLLM | 可选 | 本地 Qwen3-8B 端点（GGUF 或 AWQ） |
 
 ## 3. 开发运行
 
@@ -140,7 +140,7 @@ JSON-RPC 握手失败或打包路径错误。
 
 EduAnchor 自身不下载模型。可选三种部署方式：
 
-### A. 预装 Ollama（最简单）
+### A. 预装 Ollama / vLLM（最简单）
 
 在目标机联网一次：
 
@@ -167,8 +167,16 @@ ollama create qwen3:8b -f Modelfile
 ollama serve
 ```
 
-ModelScope 也提供 `Qwen/Qwen3-8B-AWQ`。若需要完全离线的机房镜像，可预填充
-Ollama 模型目录，或把模型烘焙进系统镜像。
+AWQ 版本可从 ModelScope 下载，并在 Linux/WSL2 上用 vLLM 启动：
+
+```powershell
+modelscope download --model Qwen/Qwen3-8B-AWQ --local_dir .\models\Qwen3-8B-AWQ
+vllm serve .\models\Qwen3-8B-AWQ --port 8000 --served-model-name Qwen/Qwen3-8B-AWQ
+$env:EDUANCHOR_LLM_BASE_URL = "http://127.0.0.1:8000/v1"
+$env:EDUANCHOR_LLM_MODEL = "Qwen/Qwen3-8B-AWQ"
+```
+
+若需要完全离线的机房镜像，可预填充 Ollama 模型目录，或把模型烘焙进系统镜像。
 
 ### B. 随包分发 llama.cpp 服务
 

@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-**离线、教材锚定的多智能体解读平台** —— 以 Electron 桌面应用交付，后端是本地 Python RAG/智能体引擎。面向大学生创新创业训练计划与 EI 会议系统类论文。
+**离线、教材锚定的多智能体解读平台** —— 基于 Electron 桌面应用与本地 Python RAG/智能体引擎，是一篇关于教材锚定、证据可追溯学习支持的学术论文的参考实现。
 
 > 模型只读你给的教材。每个回答都带页码级出处；教材没有覆盖的问题，系统会明确拒答，而不是猜测。
 
@@ -12,7 +12,7 @@
 - **零部署**：一个安装包（NSIS 或便携版），不需要服务器、域名或云端 GPU。
 - **离线演示**：断网也能完成完整演示。
 - **可复现**：演示、用户研究与论文实验使用同一个版本化产物。
-- **消费级硬件**：Qwen3-8B 4-bit 量化版本可通过 Ollama / llama.cpp 运行。
+- **消费级硬件**：Qwen3-8B GGUF（4-bit）通过 Ollama / llama.cpp 运行，或 AWQ 通过 vLLM 运行。
 
 渲染层、Electron 主进程与 Python 引擎全部在本机运行。引擎是子进程，通过标准输入输出的逐行 JSON-RPC 通信，**不暴露 HTTP 端口**。
 
@@ -64,7 +64,8 @@ npm run dev
 
 | 服务商 | Base URL | 默认模型 | API Key |
 | --- | --- | --- | --- |
-| Ollama（本地） | `http://127.0.0.1:11434/v1` | `qwen3:8b` | 不需要 |
+| Ollama（本地，GGUF） | `http://127.0.0.1:11434/v1` | `qwen3:8b` | 不需要 |
+| vLLM（本地，AWQ） | `http://127.0.0.1:8000/v1` | `Qwen/Qwen3-8B-AWQ` | 不需要 |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | 需要 |
 | DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` | 需要 |
 | 阿里云百炼（Qwen） | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` | 需要 |
@@ -74,16 +75,23 @@ npm run dev
 
 **测试连接**会先发一次短对话请求再保存。API Key 不会返回给渲染层，也不会写入日志；它以明文保存在本机 `model.json` 中。
 
-### 本地默认：Qwen3-8B 量化版
+### 本地默认：Qwen3-8B 的两个量化版本
 
-方式 A，Ollama 官方仓库：
+默认生成模型是 Qwen3-8B，支持 ModelScope 上的两种官方量化版本：
+
+| 版本 | 运行方式 | 端点 | 模型名 | 说明 |
+| --- | --- | --- | --- | --- |
+| GGUF Q4_K_M | Ollama / llama.cpp | `http://127.0.0.1:11434/v1` | `qwen3:8b` | CPU 或消费级 GPU，配置最简单 |
+| AWQ | vLLM | `http://127.0.0.1:8000/v1` | `Qwen/Qwen3-8B-AWQ` | NVIDIA GPU；vLLM 需 Linux/WSL2 |
+
+**GGUF（Ollama）**。从官方仓库拉取：
 
 ```powershell
 ollama pull qwen3:8b
 ollama serve
 ```
 
-方式 B，ModelScope（国内推荐）。下载官方 GGUF：
+或从 ModelScope 下载官方 GGUF（国内推荐）：
 
 ```powershell
 uv tool install modelscope
@@ -101,7 +109,14 @@ ollama create qwen3:8b -f Modelfile
 ollama serve
 ```
 
-ModelScope 也提供 `Qwen/Qwen3-8B-AWQ`。或者用 `llama-server -m <文件> --port 8080` 启动 GGUF，再把 Base URL 设为 `http://127.0.0.1:8080/v1`。
+**AWQ（vLLM）**。下载 AWQ 版本并在 Linux/WSL2 上启动服务：
+
+```powershell
+modelscope download --model Qwen/Qwen3-8B-AWQ --local_dir .\models\Qwen3-8B-AWQ
+vllm serve .\models\Qwen3-8B-AWQ --port 8000 --served-model-name Qwen/Qwen3-8B-AWQ
+```
+
+然后把 Base URL 设为 `http://127.0.0.1:8000/v1`，模型名设为 `Qwen/Qwen3-8B-AWQ`。GGUF 也可以用 `llama-server -m <文件> --port 8080` 启动，Base URL 设为 `http://127.0.0.1:8080/v1`。
 
 ### 远程厂商 API
 
