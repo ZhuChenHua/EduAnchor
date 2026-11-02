@@ -19,6 +19,15 @@ SYSTEM_PROMPT = """你是 EduAnchor 的教材解读智能体。你只能依据�
 3. 如果教材片段不足以回答问题，只输出：REFUSE
 4. 使用简洁、准确的中文，必要时给出教材页码。"""
 
+SYSTEM_PROMPT_V2 = """你是 EduAnchor 的教材解读智能体。你只能依据给定的教材片段回答，不能使用片段之外的任何知识。
+规则：
+1. 先判断片段是否覆盖问题；如果关键概念、结论或步骤缺失，只输出：REFUSE。不要补充解释或猜测。
+2. 回答最多 4 个要点。每个要点只陈述片段直接支持的内容，尽量沿用片段中的术语和措辞。
+3. 不要添加片段未明确写出的背景、例子、比较、优缺点或因果推断。
+4. 每个句子末尾必须标注引用编号，如 [1]；编号必须指向真正支持该句的片段。不要输出没有引用的引导句、总结句或过渡句。
+5. 只回答被问的内容；不要加入相邻概念、额外例子或与问题无关的知识点。
+6. 使用简洁、准确的中文，数学符号保持原样。"""
+
 
 @dataclass(slots=True)
 class Interpretation:
@@ -52,6 +61,7 @@ class Interpreter:
         mode: str = "explain",
         strict: bool = False,
         previous: str | None = None,
+        prompt_version: str = "v1",
     ) -> Interpretation:
         if self.llm.available and candidates:
             style = "用苏格拉底式提问引导学习者思考，不要直接给出完整结论" if mode == "socratic" else "给出清晰、分点的解释"
@@ -61,12 +71,27 @@ class Interpreter:
                     "\n\n上一次回答存在未被教材支撑的论断：\n"
                     f"{truncate(previous, 300)}\n请删除或改写这些论断，确保每一句都能被上述片段支撑。"
                 )
-            user = (
-                f"问题：{question}\n\n教材片段：\n{self._evidence_block(candidates)}\n\n"
-                f"要求：{style}；逐句标注引用编号；证据不足时输出 REFUSE。{extra}"
-            )
+            if prompt_version == "v2":
+                system_prompt = SYSTEM_PROMPT_V2
+                if mode == "socratic":
+                    style = "用苏格拉底式问题引导，不直接给出完整结论；每个问题都必须能由片段支持"
+                else:
+                    style = "先做覆盖判断；用最多 4 个要点回答，只复述片段直接支持的内容"
+                user = (
+                    f"问题：{question}\n\n教材片段：\n{self._evidence_block(candidates)}\n\n"
+                    "要求：如果片段没有覆盖问题的关键部分，只输出 REFUSE。"
+                    f"否则{style}；每个句子末尾标注 [n]；不要写没有引用的引导句或总结句；不要补充片段未明确写出的内容，也不要加入与问题无关的相邻知识点。{extra}"
+                )
+            else:
+                system_prompt = SYSTEM_PROMPT
+                user = (
+                    f"问题：{question}\n\n教材片段：\n{self._evidence_block(candidates)}\n\n"
+                    f"要求：{style}；逐句标注引用编号；证据不足时输出 REFUSE。{extra}"
+                )
             try:
-                text = self.llm.chat(SYSTEM_PROMPT, user, temperature=self.settings.temperature)
+                text = self.llm.chat(
+                    system_prompt, user, temperature=self.settings.temperature
+                )
                 if text:
                     return Interpretation(text=text, used_llm=True)
             except Exception as exc:  # noqa: BLE001 - fall back to extractive mode

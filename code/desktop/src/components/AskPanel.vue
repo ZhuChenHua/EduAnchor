@@ -7,7 +7,7 @@ const props = defineProps<{ doc: DocumentInfo; status: EngineStatus | null }>()
 const messages = ref<Answer[]>([])
 const question = ref('')
 const mode = ref<'explain' | 'socratic'>('explain')
-const condition = ref('c5')
+const condition = ref('c7')
 const loading = ref(false)
 const error = ref('')
 const openTrace = ref<number | null>(null)
@@ -66,6 +66,8 @@ async function submit(text?: string): Promise<void> {
           <button :class="{ active: mode === 'socratic' }" @click="mode = 'socratic'">苏格拉底</button>
         </div>
         <select v-model="condition" class="select" title="消融条件">
+          <option value="c7">C7 源文贴近（最终）</option>
+          <option value="c6">C6 验证优先</option>
           <option value="c5">C5 完整系统</option>
           <option value="c4">C4 多智能体</option>
           <option value="c3">C3 混合检索</option>

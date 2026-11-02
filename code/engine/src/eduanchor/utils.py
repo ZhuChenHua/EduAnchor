@@ -99,7 +99,7 @@ def rrf_fuse(rankings: Sequence[Sequence[int]], k: int = 60) -> np.ndarray:
     return scores
 
 
-def bootstrap_ci(values: Iterable[float], n_boot: int = 2000, alpha: float = 0.05) -> list[float]:
+def bootstrap_ci(values: Iterable[float], n_boot: int = 10000, alpha: float = 0.05) -> list[float]:
     data = np.asarray(list(values), dtype=float)
     if data.size == 0:
         return [0.0, 0.0]

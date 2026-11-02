@@ -11,9 +11,13 @@ const response = ref<EvalResponse | null>(null)
 const conditionLabels: Record<string, string> = {
   c1: 'C1 裸模型',
   c2: 'C2 向量 RAG',
+  c2b: 'C2b 仅 BM25',
+  c2c: 'C2c 混合不重排',
   c3: 'C3 混合检索+重排',
   c4: 'C4 多智能体',
-  c5: 'C5 完整系统'
+  c5: 'C5 预门控完整系统',
+  c6: 'C6 验证优先',
+  c7: 'C7 源文贴近（最终）'
 }
 
 const rows = computed(() => {
@@ -53,7 +57,7 @@ function percent(value: number): string {
       <div>
         <h2>评测面板</h2>
         <p class="muted">
-          在内置教材 QA 集上运行 C1–C5 消融：支撑率、幻觉率、误拒率与超纲拒答率。
+          在内置教材 QA 集上运行 C1–C7 消融：支撑率、幻觉率、误拒率与超纲拒答率。
         </p>
       </div>
       <button class="primary" :disabled="running" @click="run">
@@ -65,7 +69,7 @@ function percent(value: number): string {
 
     <div v-if="!response && !running" class="empty-state">
       <h2>尚未运行评测</h2>
-      <p>点击右上角按钮，引擎将依次运行 C1–C5 五种条件并汇总指标。</p>
+      <p>点击右上角按钮，引擎将依次运行 C1–C7 条件并汇总指标。</p>
     </div>
 
     <div v-if="running" class="loading">正在运行评测，请稍候…</div>
@@ -106,7 +110,7 @@ function percent(value: number): string {
       </div>
       <p class="hint">
         以上为当前离线引擎的实测值。接入 Qwen3-8B 后重新运行即可生成论文表格（
-        <code>uv run eduanchor eval --all-conditions --latex-dir ../../paper/tables</code>）。
+        <code>uv run eduanchor eval --all-conditions --latex-dir ../../ICEIT2027/tables</code>）。
       </p>
     </div>
   </div>

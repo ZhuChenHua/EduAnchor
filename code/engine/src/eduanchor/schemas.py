@@ -97,6 +97,8 @@ class EvalRecord(BaseModel):
 class EvalMetrics(BaseModel):
     n_in: int = 0
     n_out: int = 0
+    n_answered_in: int = 0
+    n_refused_in: int = 0
     support_rate: float = 0.0
     support_answered: float = 0.0
     hallucination_rate: float = 0.0
@@ -106,5 +108,15 @@ class EvalMetrics(BaseModel):
     borderline_refusal_accuracy: float = 0.0
     answer_rate_out: float = 0.0
     relevance: float = 0.0
+    gold_token_f1: float = 0.0
+    citation_rate: float = 0.0
+    mean_claims: float = 0.0
+    mean_answer_chars: float = 0.0
+    retrieval_hit1: float = 0.0
+    retrieval_hit4: float = 0.0
+    retrieval_mrr: float = 0.0
+    retrieval_ndcg: float = 0.0
+    coverage_auroc: float = 0.0
+    coverage_auprc: float = 0.0
     mean_latency_ms: float = 0.0
     support_ci: list[float] = Field(default_factory=list)

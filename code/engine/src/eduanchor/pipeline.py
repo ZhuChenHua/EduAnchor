@@ -28,6 +28,8 @@ class Conditions:
     rerank: bool = True
     agents: bool = True
     anchor: bool = True
+    pre_gate: bool = True
+    prompt_version: str = "v1"
 
 
 CONDITIONS: dict[str, Conditions] = {
@@ -38,6 +40,27 @@ CONDITIONS: dict[str, Conditions] = {
     "c3": Conditions("c3", retrieval=True, bm25=True, dense=True, rerank=True, agents=False, anchor=False),
     "c4": Conditions("c4", retrieval=True, bm25=True, dense=True, rerank=True, agents=True, anchor=False),
     "c5": Conditions("c5", retrieval=True, bm25=True, dense=True, rerank=True, agents=True, anchor=True),
+    "c6": Conditions(
+        "c6",
+        retrieval=True,
+        bm25=True,
+        dense=True,
+        rerank=True,
+        agents=True,
+        anchor=True,
+        pre_gate=False,
+    ),
+    "c7": Conditions(
+        "c7",
+        retrieval=True,
+        bm25=True,
+        dense=True,
+        rerank=True,
+        agents=True,
+        anchor=True,
+        pre_gate=False,
+        prompt_version="v2",
+    ),
 }
 
 
@@ -275,7 +298,7 @@ class EduAnchorEngine:
             self.store.save_session(answer)
             return answer
 
-        if flags.agents and coverage < threshold:
+        if flags.agents and flags.pre_gate and coverage < threshold:
             answer.refused = True
             answer.reason = f"检索覆盖率 {coverage:.2f} 低于阈值 {threshold:.2f}"
             answer.answer = (
@@ -289,7 +312,9 @@ class EduAnchorEngine:
             self.store.save_session(answer)
             return answer
 
-        interpretation = self.interpreter.generate(question, candidates, mode=mode)
+        interpretation = self.interpreter.generate(
+            question, candidates, mode=mode, prompt_version=flags.prompt_version
+        )
         answer.answer = interpretation.text
         answer.llm = self.llm.name if interpretation.used_llm else "extractive"
         step(
@@ -318,7 +343,12 @@ class EduAnchorEngine:
             if flags.anchor and interpretation.used_llm and support < self.settings.support_threshold:
                 step("Verifier", "regenerate", "支撑率不足，触发一次严格重生成")
                 retry = self.interpreter.generate(
-                    question, candidates, mode=mode, strict=True, previous=answer.answer
+                    question,
+                    candidates,
+                    mode=mode,
+                    strict=True,
+                    previous=answer.answer,
+                    prompt_version=flags.prompt_version,
                 )
                 if retry.used_llm and retry.text and not retry.text.strip().upper().startswith("REFUSE"):
                     answer.answer = retry.text

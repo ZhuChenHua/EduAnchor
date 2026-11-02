@@ -58,3 +58,7 @@ Thumbs.db
 /models/
 /runtime/
 code/desktop/release-full/
+
+# ICEIT 2027 conference manuscript
+/ICEIT2027/
+/AIETA2027/

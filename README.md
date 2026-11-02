@@ -11,7 +11,7 @@
 - **Privacy**: textbooks and student questions never leave the machine.
 - **Zero deployment**: one full offline package (or a small code-only installer); no server, domain, or cloud GPU.
 - **Offline demos**: works with networking disabled.
-- **Reproducibility**: the same artifact is used for the demo, the user study, and the paper.
+- **Reproducibility**: the same artifact is used for the demo, classroom deployment, and the paper.
 - **Consumer hardware**: built-in Qwen3-8B Q4_K_M via llama.cpp; AWQ via vLLM is optional.
 
 The renderer, Electron main process, and Python engine all run locally. The engine is a child process speaking newline-delimited JSON-RPC over stdio; the bundled model server binds to **loopback only**.
@@ -156,7 +156,7 @@ uv run eduanchor eval --all-conditions --out ../results.json
 uv run eduanchor serve                    # stdio JSON-RPC (used by Electron)
 ```
 
-`eval` runs the C1–C5 ablation: bare model, dense RAG, hybrid retrieval, multi-agent verification, and full anchor enforcement. It writes per-question JSON and LaTeX tables.
+`eval` runs the C1–C7 ablation: bare model, dense RAG, hybrid retrieval, pre-gate full, verification-first, and source-near prompt. It writes per-question JSON and LaTeX tables.
 
 ## Tests
 

@@ -11,7 +11,7 @@
 - **隐私**：教材与学生问题不离开本机。
 - **零部署**：一个完整离线包（或轻量安装包），不需要服务器、域名或云端 GPU。
 - **离线演示**：断网也能完成完整演示。
-- **可复现**：演示、用户研究与论文实验使用同一个版本化产物。
+- **可复现**：演示、课堂部署与论文实验使用同一个版本化产物。
 - **消费级硬件**：内置 Qwen3-8B Q4_K_M + llama.cpp；AWQ + vLLM 为可选后端。
 
 渲染层、Electron 主进程与 Python 引擎全部在本机运行。引擎是子进程，通过标准输入输出的逐行 JSON-RPC 通信；内置模型服务仅绑定 **loopback**。
@@ -155,7 +155,7 @@ uv run eduanchor eval --all-conditions --out ../results.json
 uv run eduanchor serve                    # stdio JSON-RPC，供 Electron 调用
 ```
 
-`eval` 运行 C1–C5 消融：裸模型、稠密 RAG、混合检索、多智能体校验、完整锚定约束。它会输出逐题 JSON 与论文 LaTeX 表格。
+`eval` 运行 C1–C7 消融：裸模型、稠密 RAG、混合检索、预门控完整系统、验证优先和源文贴近提示词。它会输出逐题 JSON 与论文 LaTeX 表格。
 
 ## 测试
 

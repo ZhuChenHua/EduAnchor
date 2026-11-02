@@ -34,6 +34,6 @@ All engine access goes through the preload bridge and IPC.
 - **Model settings**: use the built-in Qwen3-8B (default), Ollama, vLLM, or a
   remote OpenAI-compatible endpoint; test the connection and store the key
   locally.
-- **Grounded QA**: explain/socratic modes, C1–C5 condition switch, citations,
+- **Grounded QA**: explain/socratic modes, C1–C7 condition switch, citations,
   support/coverage metrics, full agent trace.
-- **Evaluation**: run the C1–C5 ablation and inspect the resulting table.
+- **Evaluation**: run the C1–C7 ablation and inspect the resulting table.

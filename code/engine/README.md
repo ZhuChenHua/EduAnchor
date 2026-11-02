@@ -7,7 +7,7 @@ uv sync
 uv run eduanchor doctor
 uv run eduanchor seed
 uv run eduanchor ask "什么是机器学习？"
-uv run eduanchor eval --all-conditions --out ../results.json
+uv run eduanchor eval --all-conditions --out ../results.json  # C1-C7
 uv run eduanchor serve   # stdio JSON-RPC for Electron
 ```
 
