@@ -11,21 +11,13 @@ EduAnchor-Setup-x.y.z-x64.exe       NSIS installer
 EduAnchor-Portable-x.y.z-x64.exe    single-file portable launcher
 ```
 
-There are two artifacts:
-
-- `EduAnchor-Setup-x.y.z-x64.exe` / `EduAnchor-Portable-x.y.z-x64.exe`:
-  code-only build (`npm run dist`). Contains Electron, the Vue renderer, and
-  the PyInstaller `onedir` engine at `resources/engine/`. It does **not**
-  contain the model or BGE-M3, and is about 120 MB.
-- `release-full/EduAnchor-0.1.0-x64.zip`: full offline build
-  (`npm run dist:full`). Adds `resources/models/Qwen3-8B-GGUF/` and
-  `resources/llama/`. It is a ZIP because the 5 GB model exceeds the practical
-  NSIS limit.
-
-The full build is the intended default for classrooms. The application starts
-`llama-server` at `127.0.0.1:8081` and uses the `qwen3-8b` alias. Ollama, vLLM,
-and remote providers are optional. Without a model, the engine runs the grounded
-extractive interpreter; without BGE-M3 it uses a deterministic hash embedder.
+`npm run dist` produces both artifacts. They contain Electron, the Vue renderer,
+the PyInstaller `onedir` engine at `resources/engine/`, and the llama.cpp runtime
+at `resources/llama/`. The 5.0 GB Qwen weights are **not** bundled. On first
+launch the app downloads the GGUF, verifies its SHA-256, and starts
+`llama-server` at `127.0.0.1:8081` with the `qwen3-8b` alias. Ollama, vLLM, and
+remote providers remain optional. Until the model is ready, the engine runs the
+grounded extractive interpreter and a deterministic hash embedder.
 
 ## 2. Prerequisites
 
@@ -123,8 +115,8 @@ npm run dist
 Artifacts:
 
 ```
-code/desktop/release/EduAnchor-Setup-0.1.0-x64.exe
-code/desktop/release/EduAnchor-Portable-0.1.0-x64.exe
+code/desktop/release/EduAnchor-Setup-0.2.0-x64.exe
+code/desktop/release/EduAnchor-Portable-0.2.0-x64.exe
 ```
 
 ## 6. Verify the packaged app
@@ -135,38 +127,60 @@ Python engine → sample import → grounded answer.
 ```powershell
 $env:EDUANCHOR_SMOKE = "1"
 $env:EDUANCHOR_DATA_DIR = "$env:TEMP\eduanchor-smoke"
+
+# Option A: validate the bundled runtime with an existing model
+$env:EDUANCHOR_MODEL_DIR = "D:\EduAnchor\Models"
+
+# Option B: validate fallback without starting a 5 GB download
+# $env:EDUANCHOR_DISABLE_MODEL_DOWNLOAD = "1"
+
 .\code\desktop\release\win-unpacked\EduAnchor.exe
 ```
 
 Expected: the process exits with code 0 and
 `$env:EDUANCHOR_DATA_DIR\eduanchor.sqlite3` contains one session and six cards.
 Run this before every release; it catches a missing engine binary, a broken
-JSON-RPC handshake, or a packaging path error.
+JSON-RPC handshake, or a packaging path error. The download path can be tested
+separately by pointing `EDUANCHOR_MODEL_URLS` at a local HTTP mirror and using an
+empty `EDUANCHOR_MODEL_DIR`.
 
-## 7. Offline model distribution
-
-EduAnchor itself never downloads models. Choose one deployment mode:
+## 7. Model distribution and first-run download
 
 ### A. Built-in llama.cpp + Qwen3-8B (default)
 
-The repository contains:
+The installer contains the llama.cpp runtime under `resources/llama/`, but not
+the weights. On first launch the Electron main process:
 
+1. checks the configured model directory;
+2. downloads `Qwen3-8B-Q4_K_M.gguf` from the HF mirror (official HF fallback);
+3. resumes a partial `.part` file when possible and verifies SHA-256;
+4. atomically installs the model and starts `llama-server` on `127.0.0.1:8081`;
+5. restarts the engine so it picks up the now-available model.
+
+Default model location:
+
+```text
+%LOCALAPPDATA%\EduAnchor\models\Qwen3-8B-GGUF\Qwen3-8B-Q4_K_M.gguf
 ```
-models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf
-runtime/llama/llama-server.exe
+
+Users can change the base directory in **Model settings → Built-in model
+storage**. Existing weights are moved to the new location and interrupted
+downloads resume there. Environment overrides:
+
+```powershell
+$env:EDUANCHOR_MODEL_DIR = "D:\EduAnchor\Models"
+$env:EDUANCHOR_MODEL_URLS = "https://your-mirror/Qwen3-8B-Q4_K_M.gguf"
+$env:EDUANCHOR_DISABLE_MODEL_DOWNLOAD = "1"
 ```
 
-Both are excluded from Git and are packaged by `npm run dist:full` into
-`resources/models/` and `resources/llama/`. On launch, the Electron main process
-starts the server on `127.0.0.1:8081` with alias `qwen3-8b`, waits for a health
-check, and only then starts the engine. The default provider is `llamacpp`.
-There is no external runtime dependency and no model download on first run.
+The fixed SHA-256 is
+`D98CDCBD03E17CE47681435B5150E34C1417F50B5C0019DD560E4882C5745785`.
 
-To refresh or verify the weights:
+To seed weights manually from ModelScope:
 
 ```powershell
 uv tool install modelscope
-modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir .\models\Qwen3-8B-GGUF
+modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir D:\EduAnchor\Models\Qwen3-8B-GGUF
 ```
 
 ### B. Optional Ollama or vLLM
@@ -217,10 +231,17 @@ Default data directory:
   eduanchor.sqlite3      documents, chunks, cards, sessions
   index\*.npz            chunk vectors, keyed by embedding backend
   sessions\              reserved
+  models\
+    Qwen3-8B-GGUF\
+      Qwen3-8B-Q4_K_M.gguf
 ```
 
-Override with `EDUANCHOR_DATA_DIR`. The directory is safe to back up; deleting
-it only removes imported textbooks and session history.
+The desktop preference file (`desktop-settings.json`) lives in Electron's
+`userData` directory and stores the chosen model base directory. Override data
+with `EDUANCHOR_DATA_DIR` and model storage with `EDUANCHOR_MODEL_DIR`. The data
+directory is safe to back up; deleting it only removes imported textbooks and
+session history. Deleting the model directory makes the app download it again on
+the next launch.
 
 ## 9. Troubleshooting
 
@@ -230,7 +251,9 @@ it only removes imported textbooks and session history.
 | App opens but every call fails | `resources/engine` not copied. Check `electron-builder.yml`/`package.json` `extraResources`. |
 | `ERR_ELECTRON_BUILDER_CANNOT_EXECUTE` while downloading Electron | Set `ELECTRON_MIRROR` and `ELECTRON_BUILDER_BINARIES_MIRROR`. |
 | 7-Zip "Cannot create symbolic link" | Windows lacks symlink privilege while extracting winCodeSign. Keep `signAndEditExecutable=false` or run packaging as administrator. |
-| Installer is ~500 MB+ | Optional model dependencies were bundled. Check the PyInstaller `excludes`. |
+| Installer is unexpectedly large | Check that model weights were not copied into `resources/models`. Only the llama.cpp runtime belongs in `resources/llama`. |
+| Model download fails | Check network access to `hf-mirror.com`; set `EDUANCHOR_MODEL_URLS` to a reachable mirror, or place the GGUF in the configured directory. |
+| Model downloads repeatedly | Verify the target directory is writable and the file size is exactly 5,027,783,488 bytes; the app rejects a mismatched SHA-256. |
 | Answers are always refused | The query is outside the textbook, or the coverage threshold is too high for the active embedder. Tune `EDUANCHOR_COVERAGE_THRESHOLD` (hash default 0.15; BGE-M3 0.36). |
 | LLM never activates | Check `curl http://127.0.0.1:8081/v1/models` for the built-in server, or the configured Ollama/vLLM endpoint. |
 | PDF import fails | The PDF has no text layer (scanned). OCR is out of scope. |
@@ -240,16 +263,17 @@ it only removes imported textbooks and session history.
 - [ ] `uv run pytest -q` and `uv run ruff check src tests` pass.
 - [ ] `npm run typecheck` passes.
 - [ ] `python -m compileall`/engine smoke test passes on the built bundle.
-- [ ] `EDUANCHOR_SMOKE=1` packaged-app smoke test passes.
+- [ ] `EDUANCHOR_SMOKE=1` packaged-app smoke test passes with a local model.
+- [ ] First-run download, SHA-256 verification, and directory change tested.
 - [ ] Version bumped in `code/desktop/package.json` and `code/engine/pyproject.toml`.
 - [ ] Installer and portable build both produced.
 - [ ] Optional: code-signed with a valid certificate.
-- [ ] SHA-256 checksums published with the release.
+- [ ] Release assets and SHA-256 checksums published.
 
 ## 11. Known limitations
 
 - Windows is the primary target; macOS/Linux need packaging and path adjustments.
 - No OCR, figures, formulas, or tables.
-- The standard code-only installer does not contain model weights; use the full offline ZIP for a one-click classroom deployment.
+- The installer does not contain model weights; the first launch needs network access to download approximately 5.0 GB.
 - The default evaluation uses the hash embedder; BGE-M3 requires an opt-in build.
 - The reported results use one 6-page textbook and 48 questions; the multi-textbook/user study is ongoing.

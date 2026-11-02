@@ -1,6 +1,6 @@
 [project]
 name = "eduanchor-engine"
-version = "0.1.0"
+version = "0.2.0"
 description = "EduAnchor: offline textbook-grounded multi-agent interpretation engine"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -7,21 +7,17 @@
 ## 1. 产物
 
 ```
-EduAnchor-Setup-x.y.z-x64.exe        轻量 NSIS 安装包
-EduAnchor-Portable-x.y.z-x64.exe     轻量便携版
-release-full/EduAnchor-0.1.0-x64.zip 完整离线包（含模型）
+EduAnchor-Setup-x.y.z-x64.exe        NSIS 安装包
+EduAnchor-Portable-x.y.z-x64.exe     便携版
 ```
 
-有两个产物：
+`npm run dist` 同时生成两个产物，包含 Electron、Vue 渲染层、
+`resources/engine/` 下的 PyInstaller 引擎，以及 `resources/llama/` 下的
+llama.cpp 运行时。**不包含** 5.0 GB 的 Qwen 权重。
 
-- 轻量包（`npm run dist`）：包含 Electron、Vue 渲染层与
-  `resources/engine/` 下的 PyInstaller 引擎；不含模型与 BGE-M3，约 120 MB。
-- 完整离线包（`npm run dist:full`）：额外包含 `resources/models/Qwen3-8B-GGUF/`
-  与 `resources/llama/`。由于模型约 5 GB，超过 NSIS 的实用上限，因此使用 ZIP。
-
-完整包是课堂部署的默认方式。应用启动时在 `127.0.0.1:8081` 拉起 `llama-server`，
-模型别名 `qwen3-8b`。Ollama、vLLM 与远程 API 都是可选后端。没有模型时，引擎
-回退为抽取式解释器；没有 BGE-M3 时使用确定性哈希嵌入。
+安装后首次启动会自动下载 GGUF、校验 SHA-256，并在 `127.0.0.1:8081` 拉起
+`llama-server`，模型别名 `qwen3-8b`。Ollama、vLLM 与远程 API 都是可选后端。
+模型准备完成前，引擎回退为抽取式解释器；没有 BGE-M3 时使用确定性哈希嵌入。
 
 ## 2. 环境要求
 
@@ -117,8 +113,8 @@ npm run dist
 产物：
 
 ```
-code/desktop/release/EduAnchor-Setup-0.1.0-x64.exe
-code/desktop/release/EduAnchor-Portable-0.1.0-x64.exe
+code/desktop/release/EduAnchor-Setup-0.2.0-x64.exe
+code/desktop/release/EduAnchor-Portable-0.2.0-x64.exe
 ```
 
 ## 6. 验证安装包
@@ -129,36 +125,56 @@ Python 引擎 → 导入示例教材 → 锚定回答。
 ```powershell
 $env:EDUANCHOR_SMOKE = "1"
 $env:EDUANCHOR_DATA_DIR = "$env:TEMP\eduanchor-smoke"
+
+# 方式 A：用已有模型验证随包运行时
+$env:EDUANCHOR_MODEL_DIR = "D:\EduAnchor\Models"
+
+# 方式 B：不下载 5 GB 模型，仅验证回退链路
+# $env:EDUANCHOR_DISABLE_MODEL_DOWNLOAD = "1"
+
 .\code\desktop\release\win-unpacked\EduAnchor.exe
 ```
 
 预期：进程以退出码 0 结束，`$env:EDUANCHOR_DATA_DIR\eduanchor.sqlite3`
 中存在一条会话与六张卡片。每次发版前都应运行，可发现引擎缺失、
-JSON-RPC 握手失败或打包路径错误。
+JSON-RPC 握手失败或打包路径错误。下载链路可另用本地 HTTP 镜像和空模型目录单独验证。
 
-## 7. 离线模型分发
-
-EduAnchor 自身不下载模型。可选以下部署方式：
+## 7. 模型分发与首次下载
 
 ### A. 内置 llama.cpp + Qwen3-8B（默认）
 
-项目包含：
+安装包包含 `resources/llama/` 下的 llama.cpp 运行时，但不包含权重。首次启动时，
+Electron 主进程会：
 
+1. 检查配置的模型目录；
+2. 从 Hugging Face 镜像下载 `Qwen3-8B-Q4_K_M.gguf`（官方 HF 作为回退）；
+3. 尽量续传 `.part` 文件，并校验 SHA-256；
+4. 原子安装模型并启动 `127.0.0.1:8081` 的 `llama-server`；
+5. 重启引擎，使其检测到新模型。
+
+默认模型位置：
+
+```text
+%LOCALAPPDATA%\EduAnchor\models\Qwen3-8B-GGUF\Qwen3-8B-Q4_K_M.gguf
 ```
-models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf
-runtime/llama/llama-server.exe
+
+用户可在 **模型设置 → 内置模型存储** 中更改根目录。已有权重会迁移到新位置，
+未完成下载会在新目录续传。环境变量覆盖：
+
+```powershell
+$env:EDUANCHOR_MODEL_DIR = "D:\EduAnchor\Models"
+$env:EDUANCHOR_MODEL_URLS = "https://your-mirror/Qwen3-8B-Q4_K_M.gguf"
+$env:EDUANCHOR_DISABLE_MODEL_DOWNLOAD = "1"
 ```
 
-两者不进入 Git，由 `npm run dist:full` 打包到 `resources/models/` 与
-`resources/llama/`。应用启动时，Electron 主进程在 `127.0.0.1:8081` 启动服务，
-等待健康检查通过后再启动引擎；默认 provider 为 `llamacpp`。首次运行不需要
-安装 Ollama，也不需要联网下载模型。
+固定 SHA-256：
+`D98CDCBD03E17CE47681435B5150E34C1417F50B5C0019DD560E4882C5745785`。
 
-重新下载或校验权重：
+如需从 ModelScope 手动放入权重：
 
 ```powershell
 uv tool install modelscope
-modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir .\models\Qwen3-8B-GGUF
+modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir D:\EduAnchor\Models\Qwen3-8B-GGUF
 ```
 
 ### B. 可选 Ollama 或 vLLM
@@ -205,10 +221,15 @@ $env:EDUANCHOR_LLM_MODEL = "Qwen/Qwen3-8B-AWQ"
   eduanchor.sqlite3      文档、块、卡片、会话
   index\*.npz            块向量，按向量后端区分
   sessions\              预留
+  models\
+    Qwen3-8B-GGUF\
+      Qwen3-8B-Q4_K_M.gguf
 ```
 
-可用 `EDUANCHOR_DATA_DIR` 覆盖。该目录可直接备份；删除只会移除已导入
-教材与会话历史。
+桌面端偏好文件 `desktop-settings.json` 位于 Electron 的 `userData` 目录，保存
+用户选择的模型根目录。数据目录可用 `EDUANCHOR_DATA_DIR` 覆盖，模型目录可用
+`EDUANCHOR_MODEL_DIR` 覆盖。该目录可直接备份；删除只会移除已导入教材与会话历史。
+删除模型目录后，下次启动会重新下载。
 
 ## 9. 故障排查
 
@@ -218,9 +239,11 @@ $env:EDUANCHOR_LLM_MODEL = "Qwen/Qwen3-8B-AWQ"
 | 应用能打开但所有调用失败 | `resources/engine` 未复制。检查 `package.json` 的 `extraResources`。 |
 | 下载 Electron 时报 `ERR_ELECTRON_BUILDER_CANNOT_EXECUTE` | 设置 `ELECTRON_MIRROR` 与 `ELECTRON_BUILDER_BINARIES_MIRROR`。 |
 | 7-Zip 报“无法创建符号链接” | 解压 winCodeSign 需要符号链接权限。保持 `signAndEditExecutable=false`，或以管理员身份打包。 |
-| 安装包超过 500 MB | 可选模型依赖被误打包。检查 PyInstaller 的 `excludes`。 |
+| 安装包异常大 | 检查是否误把模型权重放进了 `resources/models`；安装包只应包含 `resources/llama` 运行时。 |
+| 模型下载失败 | 检查能否访问 `hf-mirror.com`；设置 `EDUANCHOR_MODEL_URLS` 为可用镜像，或手动放入 GGUF。 |
+| 模型反复下载 | 确认目标目录可写，文件大小应恰好为 5,027,783,488 字节；SHA-256 不匹配会被拒绝。 |
 | 回答总是拒答 | 问题超出教材，或当前向量后端的覆盖度阈值过高。调整 `EDUANCHOR_COVERAGE_THRESHOLD`（哈希默认 0.15；BGE-M3 0.36）。 |
-| 大模型从不启用 | 检查 `curl http://127.0.0.1:11434/v1/models`，并设置 `EDUANCHOR_LLM_BASE_URL` / `EDUANCHOR_LLM_MODEL`。 |
+| 大模型从不启用 | 检查 `curl http://127.0.0.1:8081/v1/models`，或配置的 Ollama/vLLM 端点。 |
 | PDF 导入失败 | PDF 没有文本层（扫描版）。OCR 不在范围内。 |
 
 ## 10. 发版检查清单
@@ -228,16 +251,17 @@ $env:EDUANCHOR_LLM_MODEL = "Qwen/Qwen3-8B-AWQ"
 - [ ] `uv run pytest -q` 与 `uv run ruff check src tests` 通过。
 - [ ] `npm run typecheck` 通过。
 - [ ] 构建后的引擎冒烟测试通过。
-- [ ] `EDUANCHOR_SMOKE=1` 的安装包冒烟测试通过。
+- [ ] `EDUANCHOR_SMOKE=1` 的安装包冒烟测试通过（使用本地模型）。
+- [ ] 首次下载、SHA-256 校验与更改模型目录流程测试通过。
 - [ ] 升级 `code/desktop/package.json` 与 `code/engine/pyproject.toml` 版本号。
 - [ ] 同时生成安装版与便携版。
 - [ ] 可选：使用有效证书完成代码签名。
-- [ ] 随版本发布 SHA-256 校验和。
+- [ ] 发布安装包、便携版与 SHA-256 校验和。
 
 ## 11. 已知限制
 
 - 以 Windows 为主；macOS/Linux 需要调整打包与路径。
 - 不支持 OCR、插图、公式与表格。
-- 轻量安装包不含模型权重；课堂一键部署请使用完整离线 ZIP。
+- 安装包不含模型权重；首次使用需要联网下载约 5.0 GB。
 - 默认评测使用哈希向量；BGE-M3 需要可选构建。
 - 当前结果基于一本 6 页教材与 48 道题；多教材评测与用户研究仍在进行。

@@ -7,6 +7,8 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+!code/desktop/build/
+!code/desktop/build/icon.ico
 
 # Engine runtime data
 code/engine/.data*/
@@ -57,7 +59,6 @@ Thumbs.db
 # Bundled model weights and runtime (large binaries, distributed outside Git)
 /models/
 /runtime/
-code/desktop/release-full/
 
 # ICEIT 2027 conference manuscript
 /ICEIT2027/

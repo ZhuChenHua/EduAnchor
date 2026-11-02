@@ -9,8 +9,8 @@
 ## 为什么做成桌面应用
 
 - **隐私**：教材与学生问题不离开本机。
-- **零部署**：一个完整离线包（或轻量安装包），不需要服务器、域名或云端 GPU。
-- **离线演示**：断网也能完成完整演示。
+- **一个安装包**：安装包包含引擎与 llama.cpp 运行时；Qwen3-8B 权重在首次启动时自动下载。
+- **装好后离线**：模型安装完成后可断网使用。
 - **可复现**：演示、课堂部署与论文实验使用同一个版本化产物。
 - **消费级硬件**：内置 Qwen3-8B Q4_K_M + llama.cpp；AWQ + vLLM 为可选后端。
 
@@ -52,7 +52,7 @@ npm install
 npm run dev
 ```
 
-应用会自动启动引擎：开发模式使用 `uv run eduanchor-rpc`，生产模式使用随包分发的可执行文件。若本机没有可用大模型，引擎会退化为**抽取式解读 + 确定性哈希向量**，因此不下载模型也能完整体验界面。
+应用会自动启动引擎：开发模式使用 `.venv` 或 `uv run eduanchor-rpc`，生产模式使用随包分发的可执行文件。安装版首次启动会自动下载内置模型；下载期间引擎使用**抽取式解读 + 确定性哈希向量**，界面仍可正常使用。
 
 ### 导入自己的教材
 
@@ -78,25 +78,30 @@ npm run dev
 
 ### 内置默认：Qwen3-8B Q4_K_M
 
-项目直接携带量化模型与运行时，不依赖 Ollama：
+安装包包含 `llama-server.exe` 及其 DLL，但不包含 5.0 GB 权重。首次启动时，EduAnchor 会从 Hugging Face 镜像自动下载 `Qwen3-8B-Q4_K_M.gguf`（官方端点作为回退），校验 SHA-256 后在 `http://127.0.0.1:8081/v1` 启动服务，模型别名 `qwen3-8b`。
 
-- `models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf`（约 5.0 GB）
-- `runtime/llama/llama-server.exe` 及其 DLL
+默认模型目录：
 
-这两个目录因体积较大不进入 Git，但属于本地项目和完整离线包。`npm run dev` 会在 `http://127.0.0.1:8081/v1` 启动 `llama-server`，模型别名 `qwen3-8b`；默认 provider 为 `llamacpp`。如需从 ModelScope 重新下载权重：
+```text
+%LOCALAPPDATA%\EduAnchor\models\Qwen3-8B-GGUF\Qwen3-8B-Q4_K_M.gguf
+```
+
+打开 **模型设置 → 内置模型存储** 可随时更改位置。已有模型会迁移到新目录，未完成的分片也会续传。下载支持 HTTP 断点续传，并在使用前进行固定 SHA-256 校验。
+
+开发环境可在仓库保留 `models/Qwen3-8B-GGUF/`；`models/` 与 `runtime/` 均不进入 Git。可通过以下环境变量覆盖：
+
+```powershell
+$env:EDUANCHOR_MODEL_DIR = "D:\EduAnchor\Models"       # 包含 Qwen3-8B-GGUF 的上级目录
+$env:EDUANCHOR_MODEL_URLS = "https://your-mirror/path/Qwen3-8B-Q4_K_M.gguf"
+$env:EDUANCHOR_DISABLE_MODEL_DOWNLOAD = "1"             # 改用外部服务或哈希回退
+```
+
+如需从 ModelScope 手动刷新权重，把 GGUF 放入配置目录即可：
 
 ```powershell
 uv tool install modelscope
-modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir .\models\Qwen3-8B-GGUF
+modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir D:\EduAnchor\Models\Qwen3-8B-GGUF
 ```
-
-构建包含权重与运行时的完整离线包：
-
-```powershell
-npm run dist:full
-```
-
-输出位于 `code/desktop/release-full/`，使用 ZIP 是因为内置模型超过 NSIS 的实用体积上限。`npm run dist` 仍生成不含权重的轻量安装包。
 
 ### 可选本地后端
 
@@ -175,10 +180,10 @@ pwsh ./scripts/package.ps1          # 构建引擎 + electron-builder
 
 输出：
 
-- 轻量包：`code/desktop/release/EduAnchor-Setup-0.1.0-x64.exe`、`EduAnchor-Portable-0.1.0-x64.exe`
-- 完整离线包：在 `code/desktop` 运行 `npm run dist:full`，输出 `release-full/EduAnchor-0.1.0-x64.zip`（含 Qwen3-8B 与 llama.cpp）
+- 安装版：`code/desktop/release/EduAnchor-Setup-0.2.0-x64.exe`
+- 便携版：`code/desktop/release/EduAnchor-Portable-0.2.0-x64.exe`
 
-详细步骤、离线模型分发、代码签名与故障排查见 [docs/DEPLOYMENT.zh-CN.md](docs/DEPLOYMENT.zh-CN.md)。
+安装包包含引擎与 llama.cpp 运行时，不包含 5.0 GB 权重；首次启动自动下载模型。详细步骤、模型存储、代码签名与故障排查见 [docs/DEPLOYMENT.zh-CN.md](docs/DEPLOYMENT.zh-CN.md)。
 
 ## 学术论文
 
@@ -197,6 +202,9 @@ pwsh ./scripts/package.ps1          # 构建引擎 + electron-builder
 | `EDUANCHOR_EMBED_BACKEND` | `auto` | `auto`、`bge` 或 `hash` |
 | `EDUANCHOR_EMBED_MODEL` | `BAAI/bge-m3` | 本地/远程模型路径 |
 | `EDUANCHOR_COVERAGE_THRESHOLD` | `0.15` | 哈希向量下的覆盖度阈值 |
+| `EDUANCHOR_MODEL_DIR` | `%LOCALAPPDATA%\EduAnchor\models` | 包含 `Qwen3-8B-GGUF` 的模型根目录 |
+| `EDUANCHOR_MODEL_URLS` | HF 镜像 + 官方 HF | 逗号分隔的 GGUF 下载地址 |
+| `EDUANCHOR_DISABLE_MODEL_DOWNLOAD` | `0` | 设为 `1` 时跳过首次模型下载 |
 
 ## 范围
 

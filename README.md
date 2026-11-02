@@ -9,8 +9,8 @@
 ## Why a desktop app
 
 - **Privacy**: textbooks and student questions never leave the machine.
-- **Zero deployment**: one full offline package (or a small code-only installer); no server, domain, or cloud GPU.
-- **Offline demos**: works with networking disabled.
+- **One installer**: the installer includes the engine and llama.cpp runtime; the Qwen3-8B weights download automatically on first launch.
+- **Offline after setup**: once the model is installed, networking can be disabled.
 - **Reproducibility**: the same artifact is used for the demo, classroom deployment, and the paper.
 - **Consumer hardware**: built-in Qwen3-8B Q4_K_M via llama.cpp; AWQ via vLLM is optional.
 
@@ -53,7 +53,7 @@ npm install
 npm run dev
 ```
 
-The app starts the engine and, when the bundled files are present, the built-in llama.cpp model server. If no model is available, the engine uses a grounded **extractive interpreter** and a deterministic hash embedder, so the full UI still works.
+The packaged app starts the engine and, when the built-in model is installed, the llama.cpp model server. On first launch the model downloads automatically; until it is ready, the engine uses a grounded **extractive interpreter** and a deterministic hash embedder, so the UI still works.
 
 ### Import your own textbook
 
@@ -79,25 +79,30 @@ The **Test connection** button performs a short chat request before saving. API 
 
 ### Built-in default: Qwen3-8B Q4_K_M
 
-The project ships the quantized model and its runtime, so the application does not need Ollama:
+The installer includes `llama-server.exe` and its DLLs, but not the 5.0 GB weights. On first launch EduAnchor automatically downloads `Qwen3-8B-Q4_K_M.gguf` from the Hugging Face mirror (with the official endpoint as fallback), verifies its SHA-256, and starts the server at `http://127.0.0.1:8081/v1` with alias `qwen3-8b`.
 
-- `models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf` (about 5.0 GB)
-- `runtime/llama/llama-server.exe` plus its DLLs
+The default model directory is:
 
-Both directories are excluded from Git because of their size, but they are part of the local project and the full offline package. `npm run dev` starts `llama-server` at `http://127.0.0.1:8081/v1` with alias `qwen3-8b`; the default provider is `llamacpp`. To refresh the weights from ModelScope:
+```text
+%LOCALAPPDATA%\EduAnchor\models\Qwen3-8B-GGUF\Qwen3-8B-Q4_K_M.gguf
+```
+
+Open **Model settings → Built-in model storage** to choose another directory at any time. An existing model is moved or copied to the new location, and a partial download resumes from the new directory. Downloads support HTTP resume and are verified against a fixed SHA-256 before use.
+
+For development, the repository may keep a copy under `models/Qwen3-8B-GGUF/`; both `models/` and `runtime/` are excluded from Git. Override locations with:
+
+```powershell
+$env:EDUANCHOR_MODEL_DIR = "D:\EduAnchor\Models"       # base directory containing Qwen3-8B-GGUF
+$env:EDUANCHOR_MODEL_URLS = "https://your-mirror/path/Qwen3-8B-Q4_K_M.gguf"
+$env:EDUANCHOR_DISABLE_MODEL_DOWNLOAD = "1"             # use an external provider or hash fallback
+```
+
+To refresh weights manually from ModelScope, place the GGUF in the configured base directory:
 
 ```powershell
 uv tool install modelscope
-modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir .\models\Qwen3-8B-GGUF
+modelscope download --model Qwen/Qwen3-8B-GGUF --local_dir D:\EduAnchor\Models\Qwen3-8B-GGUF
 ```
-
-To build the full offline distribution (model plus runtime):
-
-```powershell
-npm run dist:full
-```
-
-This produces a ZIP in `code/desktop/release-full/`. A ZIP is used because the bundled model exceeds the practical NSIS size limit. `npm run dist` still builds the small code-only installer.
 
 ### Optional local backends
 
@@ -188,7 +193,7 @@ npm run dist
 a code-signing certificate or Windows symbolic-link privileges. Enable it (and
 configure a certificate) for a signed public release.
 
-The packaged app expects the engine at `resources/engine/eduanchor-engine.exe`, which `package.ps1` arranges through `extraResources`. For the classroom build with the model and runtime, run `npm run dist:full` in `code/desktop`; it writes a ZIP to `release-full/`.
+The packaged app expects the engine at `resources/engine/eduanchor-engine.exe` and the llama.cpp runtime at `resources/llama/`, both arranged through `extraResources`. The model is intentionally not packaged; it is downloaded into the user-selected directory on first launch.
 
 ## Academic manuscript
 
@@ -211,6 +216,9 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for packaging, offline model distri
 | `EDUANCHOR_EMBED_BACKEND` | `auto` | `auto`, `bge`, or `hash` |
 | `EDUANCHOR_EMBED_MODEL` | `BAAI/bge-m3` | Local/remote model path |
 | `EDUANCHOR_COVERAGE_THRESHOLD` | `0.15` | Coverage threshold for hash embeddings |
+| `EDUANCHOR_MODEL_DIR` | `%LOCALAPPDATA%\EduAnchor\models` | Base directory containing `Qwen3-8B-GGUF` |
+| `EDUANCHOR_MODEL_URLS` | HF mirror + official HF | Comma-separated GGUF download URLs |
+| `EDUANCHOR_DISABLE_MODEL_DOWNLOAD` | `0` | Set to `1` to skip first-run model download |
 
 ## Scope
 

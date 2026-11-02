@@ -107,6 +107,30 @@ export interface ModelTestResult {
   latency_ms: number
 }
 
+export type ModelState =
+  | 'checking'
+  | 'external'
+  | 'missing'
+  | 'downloading'
+  | 'verifying'
+  | 'starting'
+  | 'ready'
+  | 'error'
+
+export interface ModelStatus {
+  state: ModelState
+  provider: string
+  installed: boolean
+  modelPath: string
+  directory: string
+  source: string
+  totalBytes: number
+  downloadedBytes: number
+  percent: number
+  bytesPerSecond: number
+  error: string
+}
+
 export interface EngineStatus {
   engine: string
   llm: ModelConfigPublic & { available: boolean; name: string }
@@ -141,6 +165,11 @@ declare global {
       pickTextbook: () => Promise<string[]>
       openExternal: (url: string) => Promise<boolean>
       info: () => Promise<Record<string, unknown>>
+      modelStatus: () => Promise<ModelStatus>
+      downloadModel: () => Promise<ModelStatus>
+      chooseModelDirectory: () => Promise<ModelStatus | null>
+      openModelFolder: () => Promise<string>
+      onModelStatus: (callback: (status: ModelStatus) => void) => () => void
     }
   }
 }

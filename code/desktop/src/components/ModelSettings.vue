@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type {
   ModelConfigPublic,
   ModelSettingsResponse,
+  ModelStatus,
   ModelTestResult,
   ProviderInfo
 } from '../types'
@@ -27,6 +28,26 @@ const saving = ref(false)
 const testing = ref(false)
 const testResult = ref<ModelTestResult | null>(null)
 const error = ref('')
+const modelStatus = ref<ModelStatus | null>(null)
+const storageBusy = ref(false)
+let unsubscribeStatus: (() => void) | null = null
+
+const builtinModelState = computed(() => {
+  const state = modelStatus.value?.state
+  if (state === 'ready') return { label: '已安装', tone: 'ok' }
+  if (state === 'downloading' || state === 'verifying' || state === 'starting') {
+    return { label: '准备中', tone: 'warn' }
+  }
+  if (state === 'error') return { label: '需要处理', tone: 'bad' }
+  return { label: '未安装', tone: 'warn' }
+})
+
+function formatBytes(value: number): string {
+  if (!value) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1)
+  return `${(value / 1024 ** index).toFixed(index > 2 ? 2 : 1)} ${units[index]}`
+}
 
 function applyConfig(config: ModelConfigPublic): void {
   provider.value = config.provider
@@ -100,16 +121,60 @@ async function openModelScope(): Promise<void> {
   await window.eduanchor.openExternal('https://www.modelscope.cn/models/Qwen/Qwen3-8B-GGUF')
 }
 
-onMounted(async () => {
+async function chooseModelDirectory(): Promise<void> {
+  storageBusy.value = true
+  error.value = ''
   try {
-    const response = await window.eduanchor.call<ModelSettingsResponse>('settings.getModel')
+    const status = await window.eduanchor.chooseModelDirectory()
+    if (status) modelStatus.value = status
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    storageBusy.value = false
+  }
+}
+
+async function downloadModel(): Promise<void> {
+  storageBusy.value = true
+  error.value = ''
+  try {
+    modelStatus.value = await window.eduanchor.downloadModel()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    storageBusy.value = false
+  }
+}
+
+async function openModelFolder(): Promise<void> {
+  try {
+    await window.eduanchor.openModelFolder()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  }
+}
+
+onMounted(async () => {
+  unsubscribeStatus = window.eduanchor.onModelStatus((status) => {
+    modelStatus.value = status
+  })
+  try {
+    const [response, status] = await Promise.all([
+      window.eduanchor.call<ModelSettingsResponse>('settings.getModel'),
+      window.eduanchor.modelStatus()
+    ])
     providers.value = response.providers
     applyConfig(response.config)
+    modelStatus.value = status
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
   } finally {
     loading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  unsubscribeStatus?.()
 })
 </script>
 
@@ -132,6 +197,63 @@ onMounted(async () => {
       <div v-if="loading" class="loading">正在读取模型配置…</div>
 
       <template v-else>
+        <section v-if="modelStatus" class="model-storage">
+          <div class="model-storage-head">
+            <div>
+              <p class="eyebrow">BUILT-IN MODEL</p>
+              <h3>内置模型存储</h3>
+            </div>
+            <span class="pill" :class="builtinModelState.tone">{{ builtinModelState.label }}</span>
+          </div>
+
+          <p class="muted model-storage-copy">
+            首次使用会自动从 Hugging Face 镜像下载 Qwen3-8B Q4_K_M（约 5.0 GB），
+            下载后可完全离线运行。你可以随时更改存储位置；已有模型会一起迁移。
+          </p>
+
+          <div v-if="modelStatus.state === 'downloading'" class="model-progress">
+            <div class="model-progress-track">
+              <div class="model-progress-fill" :style="{ width: `${modelStatus.percent.toFixed(1)}%` }"></div>
+            </div>
+            <div class="model-progress-meta">
+              <span>{{ modelStatus.percent.toFixed(1) }}%</span>
+              <span>
+                {{ formatBytes(modelStatus.downloadedBytes) }} / {{ formatBytes(modelStatus.totalBytes) }}
+              </span>
+              <span>{{ formatBytes(modelStatus.bytesPerSecond) }}/s</span>
+            </div>
+          </div>
+          <div v-else-if="modelStatus.state === 'verifying'" class="model-progress-note">
+            下载完成，正在校验模型完整性…
+          </div>
+          <div v-else-if="modelStatus.state === 'starting'" class="model-progress-note">
+            模型已就绪，正在启动本地推理服务…
+          </div>
+
+          <div class="model-path">
+            <span>模型目录</span>
+            <code>{{ modelStatus.directory || '—' }}</code>
+          </div>
+          <p v-if="modelStatus.error" class="model-error">{{ modelStatus.error }}</p>
+
+          <div class="model-storage-actions">
+            <button class="ghost" :disabled="storageBusy" @click="chooseModelDirectory">
+              {{ storageBusy ? '处理中…' : '更改存储位置' }}
+            </button>
+            <button class="ghost" @click="openModelFolder">打开目录</button>
+            <div class="spacer"></div>
+            <button
+              v-if="!modelStatus.installed || modelStatus.state === 'error'"
+              class="primary"
+              :disabled="storageBusy"
+              @click="downloadModel"
+            >
+              {{ modelStatus.state === 'downloading' ? '继续下载' : '下载模型' }}
+            </button>
+          </div>
+        </section>
+
+        <h4>模型服务</h4>
         <label class="field">
           <span>服务商</span>
           <select v-model="provider" class="select wide" @change="applyPreset">
